@@ -1,0 +1,38 @@
+[package]
+name = "prompt-editor-tauri"
+version = "2.0.0"
+description = "Prompt Editor — Linear desktop workbench"
+edition = "2021"
+
+[lib]
+name = "prompt_editor"
+crate-type = ["rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["protocol-asset", "unstable"] }
+tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
+tauri-plugin-window-state = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+flate2 = "1"
+crc32fast = "1"
+base64 = "0.22"
+sha2 = "0.10"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp", "bmp"] }
+calamine = "0.31"
+walkdir = "2"
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
+chrono = { version = "0.4", features = ["serde"] }
+rand = "0.9"
+tiny_http = "0.12"
+regex = "1"
+unicode-normalization = "0.1"
+rust_decimal = { version = "1", features = ["serde-float"] }
+
+[target."cfg(windows)".dependencies]
+tauri-winrt-notification = "0.8.1"

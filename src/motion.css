@@ -1,0 +1,146 @@
+:root {
+  --motion-ease-out: cubic-bezier(0, 0, 0.58, 1);
+}
+.group-members {
+  overflow: hidden;
+}
+.terms-panel {
+  overflow: hidden;
+}
+.term-page-exit {
+  z-index: 4 !important;
+}
+.sidebar,
+.tabs {
+  position: relative;
+  isolation: isolate;
+}
+.moving-selection {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+  z-index: 0;
+  transform-origin: 0 0;
+  border-radius: 6px;
+  background: var(--selection);
+}
+.moving-selection[hidden] {
+  display: none;
+}
+.sidebar > :not(.moving-selection) {
+  position: relative;
+  z-index: 1;
+}
+.tabs > .tab,
+.tabs > .icon-button {
+  position: relative;
+  z-index: 1;
+}
+.tabs > .moving-selection {
+  border-radius: 0;
+  background: var(--panel);
+  border-bottom: 1px solid var(--accent);
+}
+html .sidebar[data-moving-selection] .nav-item.selected,
+html .tabs[data-moving-selection] .tab.active {
+  background: transparent;
+}
+html .tabs[data-moving-selection] .tab.active:after {
+  display: none;
+}
+.term-handle {
+  touch-action: none;
+}
+.term-list[data-sorting] {
+  cursor: grabbing;
+}
+.term-list[data-sorting] .term-row:hover,
+.term-list[data-sorting] .group-row:hover {
+  background: transparent;
+}
+[data-sort-source] {
+  opacity: 0.18;
+  pointer-events: none;
+}
+.sort-ghost,
+.sort-ghost * {
+  pointer-events: none !important;
+}
+.term-list > .sort-ghost {
+  position: fixed;
+  left: 0;
+  top: 0;
+  margin: 0;
+  z-index: 160;
+  overflow: hidden;
+  opacity: 0.96;
+  box-shadow: 0 8px 24px #0005;
+  border: 1px solid var(--accent);
+  background: var(--panel);
+  border-radius: 6px;
+}
+.term-list > .sort-ghost.visual-group {
+  background: var(--group-fill);
+}
+.sort-count {
+  position: absolute;
+  right: 8px;
+  top: 3px;
+  padding: 0 6px;
+  background: var(--action);
+  color: white;
+  border-radius: 4px;
+}
+.group-collapse > svg {
+  transform: rotate(0deg);
+}
+.group-collapse[aria-expanded="true"] > svg {
+  transform: rotate(90deg);
+}
+html[data-focus-input="pointer"] .group-collapse > svg {
+  transition: transform 120ms var(--motion-ease-out);
+}
+.link-connection {
+  transform-origin: left bottom;
+}
+.motion-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+/* Animate content inside a fixed button hit area. Footer labels get their own
+   span so neither the layout nor the interactive rectangle changes size. */
+html[data-focus-input="pointer"]
+  :is(
+    .motion-press > svg,
+    .modal > footer > button.primary > .motion-label,
+    .modal > footer > button.danger-button > .motion-label
+  ) {
+  transition: transform 120ms var(--motion-ease-out);
+}
+html[data-focus-input="pointer"]
+  :is(
+    .motion-press:active > svg,
+    .modal > footer > button.primary:active > .motion-label,
+    .modal > footer > button.danger-button:active > .motion-label
+  ) {
+  transform: scale(0.98);
+  transition-duration: 100ms;
+}
+[data-motion-exit],
+[data-motion-exit] * {
+  pointer-events: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-focus-input="pointer"] .group-collapse > svg {
+    transition: none;
+  }
+  html[data-focus-input="pointer"] :is(.motion-press > svg, .motion-label) {
+    transition: opacity 80ms var(--motion-ease-out) !important;
+    transform: none !important;
+  }
+  html[data-focus-input="pointer"]
+    :is(.motion-press:active > svg, button:active > .motion-label) {
+    opacity: 0.85;
+  }
+}
