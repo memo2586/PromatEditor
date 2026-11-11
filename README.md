@@ -76,8 +76,6 @@ npm run tauri -- dev
 | --- | --- |
 | `--data-dir <目录>` / `--data <目录>` | 指定数据目录 |
 | `--bridge-port <端口>` | 设置本地 Bridge 端口，默认 8189 |
-| `--no-bridge` | 禁用本地 Bridge HTTP 服务 |
-| `--startup-check` | 初始化、写入启动检查日志后退出 |
 
 ## 源码结构
 
