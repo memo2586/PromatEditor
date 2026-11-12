@@ -1,3 +1,4 @@
+import { tr } from "./i18n";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -151,7 +152,7 @@ export function SearchableSelect({
             ref={list}
             id={id}
             role="listbox"
-            aria-label={`${label}选项`}
+            aria-label={tr("{0}选项", label)}
             className="lora-picker-options"
             style={rect}
           >
@@ -176,7 +177,7 @@ export function SearchableSelect({
                 </button>
               ))
             ) : (
-              <p role="status">没有匹配的选项</p>
+              <p role="status">{tr("没有匹配的选项")}</p>
             )}
           </div>,
           document.body,

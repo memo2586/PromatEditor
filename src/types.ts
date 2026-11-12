@@ -1,3 +1,5 @@
+import type { LanguagePreference } from "./i18n";
+
 export type Term = {
   Id: string;
   Raw: string;
@@ -73,6 +75,7 @@ export type Settings = {
   LoraCopyIncludeExtension: boolean;
   ThemeColor: string;
   ThemeMode?: "light" | "dark" | "system";
+  Language?: LanguagePreference;
   FontFamily?: string;
   BackgroundImage: string | null;
   BackgroundOpacity: number;

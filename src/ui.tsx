@@ -1,3 +1,4 @@
+import { tr, trDiagnostic } from "./i18n";
 import { useSurfaceMotion } from "./motion";
 import {
   useEffect,
@@ -404,7 +405,7 @@ export function Notice({
       role={error ? "alert" : "status"}
     >
       <Info size={16} />
-      <div>{children}</div>
+      <div>{error && typeof children === "string" ? trDiagnostic(children) : children}</div>
     </div>
   );
 }
@@ -458,8 +459,9 @@ export function Modal({
   width?: number;
   className?: string;
 }) {
-  const layout = modalLayouts[title];
-  subtitle ??= layout?.[2];
+  const layoutKey = Object.keys(modalLayouts).find((key) => tr(key) === title);
+  const layout = layoutKey ? modalLayouts[layoutKey] : undefined;
+  subtitle ??= layout ? tr(layout[2]) : undefined;
   const ref = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   useSurfaceMotion(overlayRef, "modal");
@@ -468,7 +470,7 @@ export function Modal({
     const first =
       ref.current?.querySelector<HTMLElement>("[data-default-focus]") ||
       ref.current?.querySelector<HTMLElement>(
-        '[autofocus],input,textarea,select,button:not([aria-label="关闭弹窗"])',
+        '[autofocus],input,textarea,select,button:not([data-dialog-close])',
       );
     first?.focus();
     const onKey = (e: KeyboardEvent) => {
@@ -520,11 +522,12 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
+        data-favorite-layout={layoutKey === "收藏选中片段" || layoutKey === "编辑收藏片段" || undefined}
       >
         <header>
           {HeadingIcon && <HeadingIcon size={16} aria-hidden="true" />}
           <strong>{heading || title}</strong>
-          <IconButton icon={X} label="关闭弹窗" onClick={onClose} />
+          <IconButton icon={X} label={tr("关闭弹窗")} data-dialog-close onClick={onClose} />
         </header>
         {subtitle && <p className="modal-subtitle">{subtitle}</p>}
         <div className="modal-body">{children}</div>
@@ -636,7 +639,7 @@ export function Menu({
 export function Toast({ children, onClose }: { children: ReactNode; onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   useSurfaceMotion(ref, "toast");
-  return <div ref={ref} className="toast" role="status"><span>{children}</span><IconButton icon={X} label="关闭通知" onClick={onClose} /></div>;
+  return <div ref={ref} className="toast" role="status"><span>{children}</span><IconButton icon={X} label={tr("关闭通知")} onClick={onClose} /></div>;
 }
 export function PageHeading({
   title,
@@ -694,11 +697,11 @@ export function AsyncImage({
     };
   }, [path]);
   return failed ? (
-    <span className="image-missing">图片文件不可用</span>
+    <span className="image-missing">{tr("图片文件不可用")}</span>
   ) : src ? (
     <img {...props} src={src} />
   ) : (
-    <span className="image-loading">读取图片…</span>
+    <span className="image-loading">{tr("读取图片…")}</span>
   );
 }
 export function useNativeImageDrop(
@@ -723,7 +726,7 @@ export function useNativeImageDrop(
 export function ReferenceImages({
   images,
   onChange,
-  title = "参考图",
+  title = tr("参考图"),
   sourceImages = [],
 }: {
   images: string[];
@@ -744,7 +747,7 @@ export function ReferenceImages({
       paths ??= await pick({
         multiple: true,
         filters: [
-          { name: "图片", extensions: ["png", "jpg", "jpeg", "webp", "bmp"] },
+          { name: tr("图片"), extensions: ["png", "jpg", "jpeg", "webp", "bmp"] },
         ],
       }).then((p) => (Array.isArray(p) ? p : p ? [p] : []));
       const next = [...images];
@@ -773,7 +776,7 @@ export function ReferenceImages({
           return;
         }
       }
-      app.notify("剪贴板中没有图片");
+      app.notify(tr("剪贴板中没有图片"));
     } catch (e) {
       app.reportError(String(e));
     }
@@ -817,22 +820,22 @@ export function ReferenceImages({
           {title} {images.length > 0 && `· ${index + 1} / ${images.length}`}
         </span>
         <div className="inline-actions">
-          <IconButton icon={Plus} label="选择参考图片" onClick={() => add()} />
+          <IconButton icon={Plus} label={tr("选择参考图片")} onClick={() => add()} />
           <IconButton
             icon={ClipboardText}
-            label="粘贴参考图片"
+            label={tr("粘贴参考图片")}
             onClick={paste}
           />
           {sourceImages.length > 0 && (
             <IconButton
               icon={FolderOpen}
-              label="导入同名参考图"
+              label={tr("导入同名参考图")}
               onClick={() => add(sourceImages)}
             />
           )}
           <IconButton
             icon={ImageSquare}
-            label="设当前图片为封面"
+            label={tr("设当前图片为封面")}
             disabled={!images.length || index === 0}
             onClick={() => {
               onChange([
@@ -844,13 +847,13 @@ export function ReferenceImages({
           />
           <IconButton
             icon={ArrowsOut}
-            label="放大查看参考图"
+            label={tr("放大查看参考图")}
             disabled={!images.length}
             onClick={() => setViewer(true)}
           />
           <IconButton
             icon={Trash}
-            label="移除此参考图"
+            label={tr("移除此参考图")}
             disabled={!images.length}
             onClick={() => onChange(images.filter((_, i) => i !== index))}
           />
@@ -860,13 +863,13 @@ export function ReferenceImages({
         {images.length ? (
           <AsyncImage
             path={images[index]}
-            alt={`参考图 ${index + 1}`}
+            alt={tr("参考图 {0}", index + 1)}
             onDoubleClick={() => setViewer(true)}
           />
         ) : (
           <div className="reference-placeholder">
             <ImageSquare size={28} />
-            <span>拖入、粘贴或选择参考图片</span>
+            <span>{tr("拖入、粘贴或选择参考图片")}</span>
           </div>
         )}
       </div>
@@ -874,7 +877,7 @@ export function ReferenceImages({
         <div className="reference-pagination">
           <IconButton
             icon={CaretLeft}
-            label="上一张参考图"
+            label={tr("上一张参考图")}
             onClick={() =>
               setIndex((index - 1 + images.length) % images.length)
             }
@@ -884,23 +887,23 @@ export function ReferenceImages({
           </span>
           <IconButton
             icon={CaretRight}
-            label="下一张参考图"
+            label={tr("下一张参考图")}
             onClick={() => setIndex((index + 1) % images.length)}
           />
         </div>
       )}
       {viewer && (
         <Modal
-          title="参考图查看器"
+          title={tr("参考图查看器")}
           width={1080}
           onClose={() => setViewer(false)}
           footer={
             <>
-              <span className="muted">滚轮缩放 · 双击适应窗口 · Esc 关闭</span>
+              <span className="muted">{tr("滚轮缩放 · 双击适应窗口 · Esc 关闭")}</span>
               <span className="spacer" />
               <IconButton
                 icon={CaretLeft}
-                label="上一张"
+                label={tr("上一张")}
                 disabled={images.length < 2}
                 onClick={() =>
                   setIndex((index - 1 + images.length) % images.length)
@@ -911,7 +914,7 @@ export function ReferenceImages({
               </span>
               <IconButton
                 icon={CaretRight}
-                label="下一张"
+                label={tr("下一张")}
                 disabled={images.length < 2}
                 onClick={() => setIndex((index + 1) % images.length)}
               />
@@ -966,7 +969,7 @@ function ImageViewer({ path }: { path: string }) {
     >
       <AsyncImage
         path={path}
-        alt="参考图"
+        alt={tr("参考图")}
         draggable={false}
         style={{
           transform: `translate(${offset.x}px,${offset.y}px) scale(${zoom})`,

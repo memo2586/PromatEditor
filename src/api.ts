@@ -1,3 +1,4 @@
+import { tr } from "./i18n";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 function normalize<T>(v: T): T {
   if (Array.isArray(v)) return v.map(normalize) as T;
@@ -26,7 +27,7 @@ export function rpc<T = any>(
       body: JSON.stringify({ method, payload }),
     });
     const result = await response.json();
-    if (!response.ok || result.error) throw Error(result.error || "读取失败");
+    if (!response.ok || result.error) throw Error(result.error || tr("读取失败"));
     return normalize(result.result) as T;
   };
   // Read-only generation status and image I/O run independently of editor writes.
@@ -56,12 +57,12 @@ export async function pick(
     filters?: { name: string; extensions: string[] }[];
   } = {},
 ): Promise<string | string[] | null> {
-  if (!isTauri()) throw Error("系统文件选择器请在 Tauri 桌面程序中使用");
+  if (!isTauri()) throw Error(tr("系统文件选择器请在 Tauri 桌面程序中使用"));
   const { open } = await import("@tauri-apps/plugin-dialog");
   return open(options);
 }
 export async function savePath(name: string, extensions = ["png"]) {
-  if (!isTauri()) throw Error("系统文件选择器请在 Tauri 桌面程序中使用");
+  if (!isTauri()) throw Error(tr("系统文件选择器请在 Tauri 桌面程序中使用"));
   const { save } = await import("@tauri-apps/plugin-dialog");
   return save({
     defaultPath: name,

@@ -1,3 +1,4 @@
+import { setLocale, tr, trDiagnostic } from "./i18n";
 import { useMovingIndicator } from "./editor-motion";
 import { useTabSort } from "./tab-sort";
 import {
@@ -174,6 +175,7 @@ export default function App() {
   );
   const notify = useCallback((s: string) => setToast(s), []);
   const update = useCallback((s: AppData) => {
+    setLocale(s.settings.Language);
     dataRef.current = s;
     if (mounted.current) setData(s);
   }, []);
@@ -240,12 +242,12 @@ export default function App() {
               saveAs={saveAs}
               onClose={() => {
                 setModal(null);
-                reject(new DOMException("已取消", "AbortError"));
+                reject(new DOMException(tr("已取消"), "AbortError"));
               }}
               onSaved={() => {
                 setModal(null);
                 setOperationError("");
-                notify("提示词卡已保存");
+                notify(tr("提示词卡已保存"));
                 resolve();
               }}
             />,
@@ -255,7 +257,7 @@ export default function App() {
       try {
         await act("project.save", {});
         setOperationError("");
-        notify("提示词卡已保存");
+        notify(tr("提示词卡已保存"));
         return;
       } catch (e) {
         const action = await new Promise<"retry" | "saveAs" | "cancel">(
@@ -266,32 +268,28 @@ export default function App() {
             };
             setModal(
               <Modal
-                title="保存失败"
+                title={tr("保存失败")}
                 onClose={() => choose("cancel")}
                 footer={
                   <>
-                    <button onClick={() => choose("cancel")}>返回编辑</button>
+                    <button onClick={() => choose("cancel")}>{tr("返回编辑")}</button>
                     <span className="spacer" />
-                    <button onClick={() => choose("saveAs")}>
-                      另存到其他位置
-                    </button>
-                    <button className="primary" onClick={() => choose("retry")}>
-                      重试
-                    </button>
+                    <button onClick={() => choose("saveAs")}>{tr("另存到其他位置")}</button>
+                    <button className="primary" onClick={() => choose("retry")}>{tr("重试")}</button>
                   </>
                 }
               >
-                <p role="alert">保存失败。你的修改仍保留在编辑器中。</p>
-                <p className="hint">完成保存后才会继续刚才的操作。</p>
+                <p role="alert">{tr("保存失败。你的修改仍保留在编辑器中。")}</p>
+                <p className="hint">{tr("完成保存后才会继续刚才的操作。")}</p>
                 <details className="error-details">
-                  <summary>技术详情</summary>
+                  <summary>{tr("技术详情")}</summary>
                   <pre>{String(e)}</pre>
                 </details>
               </Modal>,
             );
           },
         );
-        if (action === "cancel") throw new DOMException("已取消", "AbortError");
+        if (action === "cancel") throw new DOMException(tr("已取消"), "AbortError");
         saveAs = action === "saveAs";
       }
     }
@@ -302,15 +300,13 @@ export default function App() {
       if (!(await check())) return false;
     if (!dataRef.current?.dirty) return true;
     const answer = await confirm({
-      title: "保存对项目的修改？",
+      title: tr("保存对项目的修改？"),
       body: (
-        <p>
-          提示词卡有未保存修改（包括提示词、快照和生成参数）。请先保存提示词卡，或选择不保存继续。
-        </p>
+        <p>{tr("提示词卡有未保存修改（包括提示词、快照和生成参数）。请先保存提示词卡，或选择不保存继续。")}</p>
       ),
-      confirm: "保存",
-      cancel: "取消",
-      third: "不保存",
+      confirm: tr("保存"),
+      cancel: tr("取消"),
+      third: tr("不保存"),
     });
     if (answer === "cancel") return false;
     if (answer === "confirm") {
@@ -335,7 +331,7 @@ export default function App() {
     try {
       if (!path) {
         const p = await pick({
-          filters: [{ name: "提示词项目", extensions: ["png", "json"] }],
+          filters: [{ name: tr("提示词项目"), extensions: ["png", "json"] }],
         });
         if (typeof p !== "string") return;
         path = p;
@@ -351,7 +347,7 @@ export default function App() {
     try {
       if (!path) {
         const p = await pick({
-          filters: [{ name: "PNG 图片", extensions: ["png"] }],
+          filters: [{ name: tr("PNG 图片"), extensions: ["png"] }],
         });
         if (typeof p !== "string") return;
         path = p;
@@ -451,7 +447,7 @@ export default function App() {
             await w.destroy();
           }
         } catch (e) {
-          reportError(`退出未完成：${e}`);
+          reportError(tr("退出未完成：{0}", e));
         } finally {
           closing = false;
         }
@@ -477,12 +473,12 @@ export default function App() {
           return;
         }
         if (document.querySelector("[role=dialog]")) {
-          notify("请将图片拖入弹窗中的图片区域");
+          notify(tr("请将图片拖入弹窗中的图片区域"));
           return;
         }
         if (paths.length === 1 && /\.png$/i.test(paths[0]))
           void importImage(paths[0]);
-        else notify("请拖入一张 PNG 提示词卡或生成图片");
+        else notify(tr("请拖入一张 PNG 提示词卡或生成图片"));
       }
     });
     return () => {
@@ -498,14 +494,13 @@ export default function App() {
       const visible = (el: HTMLElement) => el.getClientRects().length > 0 && !el.closest('[hidden]');
       if (mod && e.key.toLowerCase() === 'f') {
         e.preventDefault(); e.stopPropagation();
-        const input = Array.from(document.querySelectorAll<HTMLInputElement>('.page-host input, .editor-page input')).find(el => visible(el) && /搜索|查找/.test(el.placeholder + el.getAttribute('aria-label')));
+        const input = Array.from(document.querySelectorAll<HTMLInputElement>('.page-host input[data-workspace-search]')).find(el => visible(el));
         input?.focus(); input?.select(); return;
       }
       if (mod && e.key.toLowerCase() === 'b') { e.preventDefault(); setSidebar(v => !v); return; }
       if (mod && e.key.toLowerCase() === 'd' && ['generation','models'].includes(page)) {
         e.preventDefault();
-        const label = page === 'generation' ? '刷新采样器' : '读取节点与模型';
-        Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(el => visible(el) && el.getAttribute('aria-label') === label)?.click(); return;
+        document.querySelector<HTMLButtonElement>('.page-host:not([hidden]) [data-refresh-shortcut]')?.click(); return;
       }
       if (!mod && !e.altKey && !e.shiftKey && e.key === 'Tab' && ['positive','negative'].includes(page) && !e.defaultPrevented) {
         e.preventDefault();
@@ -529,7 +524,7 @@ export default function App() {
       if (e.key === "F5") {
         e.preventDefault();
         void act("lexicon.load")
-          .then(() => notify("词库已刷新"))
+          .then(() => notify(tr("词库已刷新")))
           .catch((e) => reportError(String(e)));
       }
       if (mod && e.key === "Tab") {
@@ -616,16 +611,14 @@ export default function App() {
       <div className="startup">
         <img src="/icon.png" width="48" />
         <h1>Prompt Editor</h1>
-        <p>{error || "正在读取本地工作空间…"}</p>
+        <p>{error || tr("正在读取本地工作空间…")}</p>
         {error && (
           <button
             onClick={() => {
               setError("");
               void refresh().catch((e) => setError(String(e)));
             }}
-          >
-            重新连接
-          </button>
+          >{tr("重新连接")}</button>
         )}
       </div>
     );
@@ -633,15 +626,15 @@ export default function App() {
     data.projectPath
       ?.split(/[\\/]/)
       .at(-1)
-      ?.replace(/(?:\.prompt-card)?\.png$/i, "") || "未命名项目";
+      ?.replace(/(?:\.prompt-card)?\.png$/i, "") || tr("未命名项目");
   const projectMenu: MenuItem[] = [
-    { label: "新建项目", shortcut: "Ctrl+N", action: newProject },
-    { label: "打开项目…", shortcut: "Ctrl+O", action: openProject },
-    { label: "从图片导入…", action: importImage },
-    { label: "历史项目", action: () => open("recent") },
+    { label: tr("新建项目"), shortcut: "Ctrl+N", action: newProject },
+    { label: tr("打开项目…"), shortcut: "Ctrl+O", action: openProject },
+    { label: tr("从图片导入…"), action: importImage },
+    { label: tr("历史项目"), action: () => open("recent") },
     { separator: true, label: "" },
     {
-      label: "保存提示词卡",
+      label: tr("保存提示词卡"),
       shortcut: "Ctrl+S",
       action: () =>
         save().catch((e) => {
@@ -649,7 +642,7 @@ export default function App() {
         }),
     },
     {
-      label: "另存为…",
+      label: tr("另存为…"),
       shortcut: "Ctrl+Shift+S",
       action: () =>
         save(true).catch((e) => {
@@ -715,7 +708,7 @@ export default function App() {
         onClick={() => open(id)}
       >
         <Icon size={16} />
-        <span>{title || pages[id].title}</span>
+        <span>{title || tr(pages[id].title)}</span>
         {id === "snapshots" && <small>{data.project.Snapshots.length}</small>}
       </button>
     );
@@ -763,30 +756,30 @@ export default function App() {
               <FolderOpen size={16} />
               <span>
                 <strong>{projectName}</strong>
-                <small>本地项目 · PNG 提示词卡</small>
+                <small>{tr("本地项目 · PNG 提示词卡")}</small>
               </span>
               <CaretDown size={14} />
             </button>
-            <nav aria-label="主导航">
-              <span className="nav-label">工作区</span>
-              {navigation("positive", "提示词编辑")}
+            <nav aria-label={tr("主导航")}>
+              <span className="nav-label">{tr("工作区")}</span>
+              {navigation("positive", tr("提示词编辑"))}
               {navigation("generation")}
               {navigation("models")}
               {navigation("runs")}
               {navigation("console")}
               <ComfyWebLauncher />
-              <span className="nav-label">资源库</span>
+              <span className="nav-label">{tr("资源库")}</span>
               {navigation("builtin")}
               {navigation("favorites")}
               {navigation("lora")}
-              <span className="nav-label">项目</span>
+              <span className="nav-label">{tr("项目")}</span>
               {navigation("snapshots")}
               {navigation("recent")}
             </nav>
             <div className="sidebar-bottom">
               <ComfyServiceCard />
               {navigation("settings")}
-              <span className="local-label">本地工作空间</span>
+              <span className="local-label">{tr("本地工作空间")}</span>
             </div>
           </aside>
         )}
@@ -809,33 +802,32 @@ export default function App() {
               if (isTauri()) void getCurrentWindow().toggleMaximize();
             }}
           >
-            <span data-tauri-drag-region>
-              提示词编辑器 / {projectName}
+            <span data-tauri-drag-region>{tr("提示词编辑器 /") + " "}{projectName}
               {data.dirty ? " *" : ""}
             </span>
             <div className="inline-actions">
               <IconButton
                 icon={SidebarSimple}
-                label="切换导航栏"
+                label={tr("切换导航栏")}
                 onClick={() => setSidebar(!sidebar)}
               />
               <IconButton
                 icon={Minus}
-                label="最小化窗口"
+                label={tr("最小化窗口")}
                 onClick={() => {
                   if (isTauri()) void getCurrentWindow().minimize();
                 }}
               />
               <IconButton
                 icon={Square}
-                label="最大化或还原窗口"
+                label={tr("最大化或还原窗口")}
                 onClick={() => {
                   if (isTauri()) void getCurrentWindow().toggleMaximize();
                 }}
               />
               <IconButton
                 icon={X}
-                label="关闭窗口"
+                label={tr("关闭窗口")}
                 onClick={() => {
                   if (isTauri()) void getCurrentWindow().close();
                 }}
@@ -846,7 +838,7 @@ export default function App() {
             ref={tabsMotionRef}
             className="tabs"
             role="tablist"
-            aria-label="工作页签"
+            aria-label={tr("工作页签")}
             onWheel={(e) => (e.currentTarget.scrollLeft += e.deltaY)}
           >
             {displayedTabs.map((id) => {
@@ -863,7 +855,7 @@ export default function App() {
                       y: e.clientY,
                       items: [
                         {
-                          label: pinned.includes(id) ? "取消固定" : "固定页签",
+                          label: pinned.includes(id) ? tr("取消固定") : tr("固定页签"),
                           disabled: ["positive", "negative"].includes(id),
                           action: () =>
                             setPinned((prev) =>
@@ -873,7 +865,7 @@ export default function App() {
                             ),
                         },
                         {
-                          label: "关闭页签",
+                          label: tr("关闭页签"),
                           disabled:
                             ["positive", "negative"].includes(id) ||
                             pinned.includes(id),
@@ -889,7 +881,7 @@ export default function App() {
                     onClick={() => open(id)}
                   >
                     <Icon size={16} />
-                    <span>{pages[id].title}</span>
+                    <span>{tr(pages[id].title)}</span>
                     {id === "positive" && (
                       <small>{data.project.State.Positive.Active.length}</small>
                     )}
@@ -901,7 +893,7 @@ export default function App() {
                     !pinned.includes(id) && (
                       <IconButton
                         icon={X}
-                        label={`关闭${pages[id].title}页签`}
+                        label={tr("关闭{0}页签", tr(pages[id].title))}
                         onClick={() => closeTab(id)}
                       />
                     )}
@@ -910,7 +902,7 @@ export default function App() {
             })}
             <IconButton
               icon={Plus}
-              label="打开功能页"
+              label={tr("打开功能页")}
               onClick={(e) =>
                 setMenu({
                   x: e.currentTarget.getBoundingClientRect().left,
@@ -918,7 +910,7 @@ export default function App() {
                   items: Object.entries(pages)
                     .filter(([k]) => !["positive", "negative"].includes(k))
                     .map(([id, p]) => ({
-                      label: p.title,
+                      label: tr(p.title),
                       action: () => open(id),
                     })),
                 })
@@ -927,13 +919,13 @@ export default function App() {
             <span className="spacer" />
             <IconButton
               icon={CaretDown}
-              label="所有页签"
+              label={tr("所有页签")}
               onClick={(e) =>
                 setMenu({
                   x: e.currentTarget.getBoundingClientRect().right - 220,
                   y: 86,
                   items: tabs.map((id) => ({
-                    label: pages[id].title,
+                    label: tr(pages[id].title),
                     checked: page === id,
                     action: () => open(id),
                   })),
@@ -947,19 +939,17 @@ export default function App() {
               <section
                 className="recovery-banner"
                 role="alert"
-                aria-label="工作区恢复失败"
+                aria-label={tr("工作区恢复失败")}
               >
                 <div>
-                  <strong>
-                    上次的工作区暂时无法读取。原文件已保留，尚未覆盖。
-                  </strong>
-                  <p>请先备份原文件，再按恢复选项处理。</p>
+                  <strong>{tr("上次的工作区暂时无法读取。原文件已保留，尚未覆盖。")}</strong>
+                  <p>{tr("请先备份原文件，再按恢复选项处理。")}</p>
                 </div>
                 <button
                   onClick={() =>
                     setModal(
                       <Modal
-                        title="工作区恢复选项"
+                        title={tr("工作区恢复选项")}
                         onClose={() => setModal(null)}
                         footer={
                           <>
@@ -969,37 +959,21 @@ export default function App() {
                                   (e) => reportError(String(e)),
                                 )
                               }
-                            >
-                              打开数据文件夹
-                            </button>
+                            >{tr("打开数据文件夹")}</button>
                             <span className="spacer" />
-                            <button onClick={() => setModal(null)}>
-                              返回编辑
-                            </button>
+                            <button onClick={() => setModal(null)}>{tr("返回编辑")}</button>
                           </>
                         }
                       >
-                        <p>
-                          原 session.json
-                          已受到写入保护，当前显示的是临时工作区。
-                        </p>
+                        <p>{tr("原 session.json 已受到写入保护，当前显示的是临时工作区。")}</p>
                         <ol>
-                          <li>
-                            打开数据文件夹，将 session.json 复制到其他位置备份。
-                          </li>
-                          <li>
-                            退出应用后修复原文件，或将其移到备份位置，再重新启动应用。
-                          </li>
-                          <li>
-                            如已保存过 PNG
-                            提示词卡，可通过“打开项目”恢复对应版本。
-                          </li>
+                          <li>{tr("打开数据文件夹，将 session.json 复制到其他位置备份。")}</li>
+                          <li>{tr("退出应用后修复原文件，或将其移到备份位置，再重新启动应用。")}</li>
+                          <li>{tr("如已保存过 PNG 提示词卡，可通过“打开项目”恢复对应版本。")}</li>
                         </ol>
-                        <p className="hint">
-                          在完成恢复前，请将新修改另存为提示词卡。
-                        </p>
+                        <p className="hint">{tr("在完成恢复前，请将新修改另存为提示词卡。")}</p>
                         <details className="error-details">
-                          <summary>技术详情与文件位置</summary>
+                          <summary>{tr("技术详情与文件位置")}</summary>
                           <pre>
                             {data.dataDirectory}
                             {"/session.json\n"}
@@ -1009,18 +983,14 @@ export default function App() {
                       </Modal>,
                     )
                   }
-                >
-                  查看恢复选项
-                </button>
+                >{tr("查看恢复选项")}</button>
                 <button
                   onClick={() =>
                     void openDataFolder(data.dataDirectory).catch((e) =>
                       reportError(String(e)),
                     )
                   }
-                >
-                  打开数据文件夹
-                </button>
+                >{tr("打开数据文件夹")}</button>
               </section>
             )}
             <div
@@ -1038,25 +1008,28 @@ export default function App() {
               ))}
           </main>
           {!["runs", "probe", "console", "comfy", "settings"].includes(page) && <ResultFilmstrip />}
-          <footer className="statusbar">
+          <footer
+            className="statusbar"
+            data-narrow-hint={["console", "settings"].includes(page) ? tr("Ctrl + Tab 切换页签") : tr("原文与词条上下排列 · 中间分隔条可拖动")}
+            data-compact-hint={tr("解析完成 · 复制全部有效项")}
+          >
             <CheckCircle size={12} />
             <span>
               {data.sessionRestoreError
-                ? "工作区原文件已保护"
-                : "工作区自动保存"}
+                ? tr("工作区原文件已保护")
+                : tr("工作区自动保存")}
             </span>
             <span className="card-save-status">
-              {data.dirty ? "提示词卡有未保存修改" : "提示词卡无未保存修改"}
+              {data.dirty ? tr("提示词卡有未保存修改") : tr("提示词卡无未保存修改")}
             </span>
             <span
               className="lexicon-status"
-              title={data.lexicon.path || "尚未加载 Excel 词库"}
+              title={data.lexicon.path || tr("尚未加载 Excel 词库")}
             >
-              {data.lexicon.path?.split(/[\\/]/).at(-1) || "未加载统计词库"} ·
-              F5 刷新词库{data.lexicon.changed ? " · 文件已变化" : ""}
+              {data.lexicon.path?.split(/[\\/]/).at(-1) || tr("未加载统计词库")}{" " + tr("· F5 刷新词库")}{data.lexicon.changed ? tr(" · 文件已变化") : ""}
             </span>
             <span className="spacer" />
-            <span>Ctrl + Tab 切换页签</span>
+            <span>{tr("Ctrl + Tab 切换页签")}</span>
           </footer>
         </div>
       </div>
@@ -1091,7 +1064,7 @@ export default function App() {
                   setConfirmation(null);
                 }}
               >
-                {confirmation.options.cancel || "取消"}
+                {confirmation.options.cancel || tr("取消")}
               </button>
               <button
                 className={
@@ -1102,7 +1075,7 @@ export default function App() {
                   setConfirmation(null);
                 }}
               >
-                {confirmation.options.confirm || "确认"}
+                {confirmation.options.confirm || tr("确认")}
               </button>
             </>
           }
@@ -1114,15 +1087,15 @@ export default function App() {
       {operationError && (
         <div className="operation-error" role="alert">
           <div>
-            <strong>操作未完成，请查看错误后重试。</strong>
+            <strong>{tr("操作未完成，请查看错误后重试。")}</strong>
             <details className="error-details">
-              <summary>技术详情</summary>
-              <pre>{operationError}</pre>
+              <summary>{tr("技术详情")}</summary>
+              <pre>{trDiagnostic(operationError)}</pre>
             </details>
           </div>
           <IconButton
             icon={X}
-            label="关闭错误通知"
+            label={tr("关闭错误通知")}
             onClick={() => setOperationError("")}
           />
         </div>

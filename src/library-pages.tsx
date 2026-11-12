@@ -1,3 +1,4 @@
+import { tr } from "./i18n";
 import { openProbe } from "./comfy-probe";
 import { useState, useEffect, useRef, useMemo } from "react";
 import {
@@ -78,14 +79,14 @@ export function BuiltinForm({
   const [error, setError] = useState("");
   return (
     <Modal
-      title={entry?.Id ? "编辑内置词条" : "新建内置词条"}
+      title={entry?.Id ? tr("编辑内置词条") : tr("新建内置词条")}
       width={840}
       onClose={onClose}
       footer={
         <>
-          <span className="hint">本机修改独立保存，不改写内置基线</span>
+          <span className="hint">{tr("本机修改独立保存，不改写内置基线")}</span>
           <span className="spacer" />
-          <button onClick={onClose}>取消</button>
+          <button onClick={onClose}>{tr("取消")}</button>
           <button
             className="primary"
             onClick={async () => {
@@ -96,21 +97,19 @@ export function BuiltinForm({
                 setError(String(e));
               }
             }}
-          >
-            保存词条
-          </button>
+          >{tr("保存词条")}</button>
         </>
       }
     >
       <div className="form-columns">
-        <Field label="显示名称">
+        <Field label={tr("显示名称")}>
           <input
             autoFocus
             value={value.Name}
             onChange={(e) => setValue({ ...value, Name: e.target.value })}
           />
         </Field>
-        <Field label="英文名称">
+        <Field label={tr("英文名称")}>
           <input
             value={value.English}
             onChange={(e) => setValue({ ...value, English: e.target.value })}
@@ -118,17 +117,17 @@ export function BuiltinForm({
         </Field>
       </div>
       <div className="form-columns">
-        <Field label="主分类">
+        <Field label={tr("主分类")}>
           <select
             value={value.Category}
             onChange={(e) => setValue({ ...value, Category: e.target.value })}
           >
             {builtinCategories.map((c) => (
-              <option key={c}>{c}</option>
+              <option key={c} value={c}>{tr(c)}</option>
             ))}
           </select>
         </Field>
-        <Field label="子分类">
+        <Field label={tr("子分类")}>
           <input
             value={value.Subcategory}
             onChange={(e) =>
@@ -137,7 +136,7 @@ export function BuiltinForm({
           />
         </Field>
       </div>
-      <Field label="身份 / 提示词原文">
+      <Field label={tr("身份 / 提示词原文")}>
         <textarea
           className="mono"
           rows={3}
@@ -145,7 +144,7 @@ export function BuiltinForm({
           onChange={(e) => setValue({ ...value, Text: e.target.value })}
         />
       </Field>
-      <Field label="外貌提示词（可选）">
+      <Field label={tr("外貌提示词（可选）")}>
         <textarea
           className="mono"
           rows={3}
@@ -153,7 +152,7 @@ export function BuiltinForm({
           onChange={(e) => setValue({ ...value, Appearance: e.target.value })}
         />
       </Field>
-      <Field label="备注">
+      <Field label={tr("备注")}>
         <textarea
           rows={2}
           value={value.Notes}
@@ -286,7 +285,7 @@ export function BuiltinPage() {
       y: e.clientY,
       items: [
         {
-          label: "备份本机修改…",
+          label: tr("备份本机修改…"),
           action: async () => {
             try {
               const path = await savePath("builtin-prompts.backup.json", [
@@ -294,7 +293,7 @@ export function BuiltinPage() {
               ]);
               if (path) {
                 await app.act("builtin.backup", { path });
-                app.notify("词库备份已导出");
+                app.notify(tr("词库备份已导出"));
               }
             } catch (e) {
               app.reportError(String(e));
@@ -302,18 +301,18 @@ export function BuiltinPage() {
           },
         },
         {
-          label: "恢复词库备份…",
+          label: tr("恢复词库备份…"),
           action: async () => {
             try {
               const path = await pick({
-                filters: [{ name: "词库备份", extensions: ["json"] }],
+                filters: [{ name: tr("词库备份"), extensions: ["json"] }],
               });
               if (
                 typeof path === "string" &&
                 (await app.confirm({
-                  title: "恢复词库备份？",
-                  body: <p>将替换本机词库修改；原文件会先生成备份。</p>,
-                  confirm: "恢复备份",
+                  title: tr("恢复词库备份？"),
+                  body: <p>{tr("将替换本机词库修改；原文件会先生成备份。")}</p>,
+                  confirm: tr("恢复备份"),
                 })) === "confirm"
               ) {
                 await app.act("builtin.restore", { path });
@@ -325,13 +324,13 @@ export function BuiltinPage() {
           },
         },
         {
-          label: "导出原始十五张数据表…",
+          label: tr("导出原始十五张数据表…"),
           action: async () => {
             try {
               const path = await savePath("source-presets.json", ["json"]);
               if (path) {
                 await app.act("builtin.exportSource", { path });
-                app.notify("原始数据已导出");
+                app.notify(tr("原始数据已导出"));
               }
             } catch (e) {
               app.reportError(String(e));
@@ -339,7 +338,7 @@ export function BuiltinPage() {
           },
         },
         {
-          label: "撤销最近删除",
+          label: tr("撤销最近删除"),
           disabled: !deleted.current,
           action: async () => {
             if (deleted.current) {
@@ -357,26 +356,26 @@ export function BuiltinPage() {
   return (
     <div className="standard-page">
       <PageHeading
-        title="内置提示词库"
-        description={`${result.seedCount.toLocaleString()} 条内置词条 · 离线可用 · 本机修改独立保存`}
-        status="本机修改受保护保存"
+        title={tr("内置提示词库")}
+        description={tr("{0} 条内置词条 · 离线可用 · 本机修改独立保存", result.seedCount.toLocaleString())}
+        status={tr("本机修改受保护保存")}
         actions={
           <>
             <IconButton
               icon={Archive}
-              label="备份与恢复词库"
+              label={tr("备份与恢复词库")}
               onClick={archiveMenu}
             />
             <IconButton
               icon={Plus}
-              label="新建内置词条"
+              label={tr("新建内置词条")}
               onClick={() => edit()}
             />
           </>
         }
       />
       <div className="resource-layout">
-        <Panel className="resource-categories" title="分类">
+        <Panel className="resource-categories" title={tr("分类")}>
           <nav>
             {["全部词条", "已星标", "最近应用", ...builtinCategories].map(
               (c) => (
@@ -389,64 +388,65 @@ export function BuiltinPage() {
                     setMain("全部主分类");
                   }}
                 >
-                  <span>{c}</span>
+                  <span>{tr(c)}</span>
                   <small>{result.counts[c]?.toLocaleString() || ""}</small>
                 </button>
               ),
             )}
           </nav>
-          <p className="hint">内置基线与本机修改分别保存</p>
+          <p className="hint">{tr("内置基线与本机修改分别保存")}</p>
         </Panel>
         <Panel
           className="resource-records"
-          title={category}
+          title={tr(category)}
           actions={
-            <span className="hint">{result.total.toLocaleString()} 条</span>
+            <span className="hint">{result.total.toLocaleString()}{" " + tr("条")}</span>
           }
         >
           <div className="resource-search">
             <div className="search-input">
               <MagnifyingGlass size={16} />
               <input
-                aria-label="搜索内置词条"
-                placeholder="搜索中文、英文或原文…"
+                aria-label={tr("搜索内置词条")}
+                data-workspace-search
+                placeholder={tr("搜索中文、英文或原文…")}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
             </div>
             {category === "已星标" && (
               <select
-                aria-label="星标主分类"
+                aria-label={tr("星标主分类")}
                 value={main}
                 onChange={(e) => {
                   setMain(e.target.value);
                   setSub("全部子分类");
                 }}
               >
-                <option>全部主分类</option>
+                <option value="全部主分类">{tr("全部主分类")}</option>
                 {builtinCategories.map((c) => (
-                  <option key={c}>{c}</option>
+                  <option key={c} value={c}>{tr(c)}</option>
                 ))}
               </select>
             )}
             <div className="form-columns">
               <select
-                aria-label="内置词条子分类"
+                aria-label={tr("内置词条子分类")}
                 value={sub}
                 onChange={(e) => setSub(e.target.value)}
               >
-                <option>全部子分类</option>
+                <option value="全部子分类">{tr("全部子分类")}</option>
                 {result.subcategories.filter(Boolean).map((c) => (
                   <option key={c}>{c}</option>
                 ))}
               </select>
               <select
-                aria-label="内置词条排序"
+                aria-label={tr("内置词条排序")}
                 value={sort}
                 onChange={(e) => setSort(e.target.value)}
               >
                 {["名称排序", "分类排序", "最近应用"].map((s) => (
-                  <option key={s}>{s}</option>
+                  <option key={s} value={s}>{tr(s)}</option>
                 ))}
               </select>
             </div>
@@ -455,7 +455,7 @@ export function BuiltinPage() {
             className="virtual-records"
             ref={list}
             role="listbox"
-            aria-label="内置词条列表"
+            aria-label={tr("内置词条列表")}
             onScroll={(e) => {
               const next =
                 Math.floor(e.currentTarget.scrollTop / 64 / 100) * 100;
@@ -491,75 +491,75 @@ export function BuiltinPage() {
             </div>
             {!result.total && (
               <Empty
-                title={loading ? "正在读取词库…" : "没有匹配的词条"}
-                description="尝试其他关键词、分类或筛选。"
+                title={loading ? tr("正在读取词库…") : tr("没有匹配的词条")}
+                description={tr("尝试其他关键词、分类或筛选。")}
               />
             )}
           </div>
           <footer className="panel-footer hint">
             {loading
-              ? "读取中…"
-              : `显示 ${Math.min(offset + 1, result.total)}–${Math.min(offset + 100, result.total)} / ${result.total.toLocaleString()}`}
+              ? tr("读取中…")
+              : tr("显示 {0}–{1} / {2}", Math.min(offset + 1, result.total), Math.min(offset + 100, result.total), result.total.toLocaleString())}
           </footer>
         </Panel>
         <Panel
           className="resource-detail"
-          title={selected?.Name || "词条详情"}
+          title={selected?.Name || tr("词条详情")}
           actions={
             selected && (
               <>
                 <IconButton
                   icon={Star}
-                  label={selected.Starred ? "取消星标" : "星标当前词条"}
+                  label={selected.Starred ? tr("取消星标") : tr("星标当前词条")}
                   active={selected.Starred}
                   onClick={() => void action("star")}
                 />
                 <IconButton
                   icon={PencilSimple}
-                  label="编辑当前词条"
+                  label={tr("编辑当前词条")}
                   onClick={() => edit(selected)}
                 />
                 <IconButton
                   icon={DotsThree}
-                  label="内置词条管理"
+                  label={tr("内置词条管理")}
                   onClick={(e) =>
                     setMenu({
                       x: e.clientX,
                       y: e.clientY,
                       items: [
                         {
-                          label: "复制为新词条…",
+                          label: tr("复制为新词条…"),
                           action: () =>
                             edit({
                               ...selected,
                               Id: "",
-                              Name: `${selected.Name} · 副本`,
+                              Name: tr("{0} · 副本", selected.Name),
                               Source: "用户新建",
                             }),
                         },
                         {
-                          label: "恢复内置版本",
+                          label: tr("恢复内置版本"),
                           disabled: !selected.Modified,
                           action: async () => {
                             if (
                               (await app.confirm({
-                                title: "恢复内置版本？",
-                                body: <p>将移除此条目的本机修改。</p>,
-                                confirm: "恢复内置",
+                                title: tr("恢复内置版本？"),
+                                body: <p>{tr("将移除此条目的本机修改。")}</p>,
+                                confirm: tr("恢复内置"),
                               })) === "confirm"
                             )
                               await action("restore");
                           },
                         },
                         {
-                          label: "删除词条",
+                          label: tr("删除词条"),
                           danger: true,
                           action: async () => {
                             if (
                               (await app.confirm({
-                                title: "删除此词条？",
-                                body: <p>删除后可通过管理菜单撤销删除。</p>,
-                                confirm: "删除",
+                                title: tr("删除此词条？"),
+                                body: <p>{tr("删除后可通过管理菜单撤销删除。")}</p>,
+                                confirm: tr("删除"),
                                 danger: true,
                               })) === "confirm"
                             )
@@ -584,58 +584,56 @@ export function BuiltinPage() {
                   <span className="badge">{selected.Subcategory}</span>
                   <span className="badge">
                     {selected.Modified
-                      ? "内置 · 已修改"
+                      ? tr("内置 · 已修改")
                       : selected.Source === "用户新建"
-                        ? "自建"
-                        : "内置"}
+                        ? tr("自建")
+                        : tr("内置")}
                   </span>
                 </div>
-                <Field label="应用内容">
+                <Field label={tr("应用内容")}>
                   <Segments
                     value={mode}
                     onChange={setMode}
-                    label="应用内容"
+                    label={tr("应用内容")}
                     items={[
-                      { value: "identity", label: "仅身份词" },
-                      { value: "appearance", label: "仅外貌" },
-                      { value: "both", label: "身份 + 外貌" },
+                      { value: "identity", label: tr("仅身份词") },
+                      { value: "appearance", label: tr("仅外貌") },
+                      { value: "both", label: tr("身份 + 外貌") },
                     ]}
                   />
                 </Field>
-                <Field label="提示词预览">
+                <Field label={tr("提示词预览")}>
                   <pre className="output-preview">
-                    {prompt || "此条目没有外貌提示词"}
+                    {prompt || tr("此条目没有外貌提示词")}
                   </pre>
                 </Field>
                 {selected.Appearance && (
-                  <Field label="外貌">
+                  <Field label={tr("外貌")}>
                     <pre className="output-preview">{selected.Appearance}</pre>
                   </Field>
                 )}
                 {selected.Notes && (
-                  <Field label="备注">
+                  <Field label={tr("备注")}>
                     <p>{selected.Notes}</p>
                   </Field>
                 )}
                 <details className="source-data">
-                  <summary>原始数据 · {selected.Source}</summary>
-                  <pre>{selected.SourceData || "暂无原始数据"}</pre>
+                  <summary>{tr("原始数据 ·") + " "}{selected.Source}</summary>
+                  <pre>{selected.SourceData || tr("暂无原始数据")}</pre>
                 </details>
               </div>
               <div className="resource-apply">
                 <select
-                  aria-label="内置词条应用目标"
+                  aria-label={tr("内置词条应用目标")}
                   value={target}
                   onChange={(e) => setTarget(e.target.value)}
                 >
-                  <option value="positive">积极提示词</option>
-                  <option value="negative">消极提示词</option>
+                  <option value="positive">{tr("积极提示词")}</option>
+                  <option value="negative">{tr("消极提示词")}</option>
                 </select>
-                <label className="inline-label">
-                  创建组
-                  <Switch
+                <label className="inline-label">{tr("创建组")}<Switch
                     checked={createGroup}
-                    label="应用时创建视觉组"
+                    label={tr("应用时创建视觉组")}
                     onChange={setCreateGroup}
                   />
                 </label>
@@ -648,12 +646,12 @@ export function BuiltinPage() {
                 <span className="spacer" />
                 <IconButton
                   icon={Copy}
-                  label="复制当前应用内容"
+                  label={tr("复制当前应用内容")}
                   disabled={!prompt}
                   onClick={() =>
                     void navigator.clipboard
                       .writeText(prompt)
-                      .then(() => app.notify("已复制当前应用内容"))
+                      .then(() => app.notify(tr("已复制当前应用内容")))
                   }
                 />
                 <button
@@ -675,17 +673,15 @@ export function BuiltinPage() {
                   }}
                 >
                   <Plus size={16} />
-                  {target === "negative" ? "加入负向提示词" : "加入正向提示词"}
+                  {target === "negative" ? tr("加入负向提示词") : tr("加入正向提示词")}
                 </button>
               </div>
             </>
           ) : (
             <Empty
-              title="选择一个词条查看详情"
+              title={tr("选择一个词条查看详情")}
               action={
-                <button className="primary" disabled>
-                  加入{target === "negative" ? "负向" : "正向"}提示词
-                </button>
+                <button className="primary" disabled>{tr(target === "negative" ? "加入负向提示词" : "加入正向提示词")}</button>
               }
             />
           )}
@@ -739,22 +735,22 @@ export function FavoritesPage() {
   return (
     <div className="standard-page">
       <PageHeading
-        title="收藏与片段"
-        description="收藏片段与已插入的视觉组分别保存。"
-        status={`${app.data.favorites.length} 个片段 · 8 类`}
+        title={tr("收藏与片段")}
+        description={tr("收藏片段与已插入的视觉组分别保存。")}
+        status={tr("{0} 个片段 · 8 类", app.data.favorites.length)}
         actions={
           <>
             <IconButton
               icon={Star}
-              label="新建收藏片段"
+              label={tr("新建收藏片段")}
               onClick={() => edit()}
             />
             <IconButton
               icon={Info}
-              label="收藏说明"
+              label={tr("收藏说明")}
               onClick={() =>
                 app.notify(
-                  "收藏选择与收藏全文由工作台单独提供；插入收藏会建立独立视觉组。",
+                  tr("收藏选择与收藏全文由工作台单独提供；插入收藏会建立独立视觉组。"),
                 )
               }
             />
@@ -762,7 +758,7 @@ export function FavoritesPage() {
         }
       />
       <div className="resource-layout">
-        <Panel title="分类" className="resource-categories">
+        <Panel title={tr("分类")} className="resource-categories">
           <nav>
             {["全部收藏", ...categories].map((c) => (
               <button
@@ -779,30 +775,31 @@ export function FavoritesPage() {
               </button>
             ))}
           </nav>
-          <p className="hint">八类视觉组可独立管理</p>
+          <p className="hint">{tr("八类视觉组可独立管理")}</p>
         </Panel>
         <Panel
           className="resource-records"
-          title={category}
-          actions={<span className="hint">{items.length} 个</span>}
+          title={tr(category)}
+          actions={<span className="hint">{items.length}{" " + tr("个")}</span>}
         >
           <div className="resource-search">
             <input
-              aria-label="搜索收藏"
-              placeholder="搜索收藏名称或原文…"
+              aria-label={tr("搜索收藏")}
+              data-workspace-search
+              placeholder={tr("搜索收藏名称或原文…")}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
             <select
-              aria-label="收藏排序"
+              aria-label={tr("收藏排序")}
               value={sort}
               onChange={(e) => setSort(e.target.value)}
             >
-              <option>名称排序</option>
-              <option>类别排序</option>
+              <option value="名称排序">{tr("名称排序")}</option>
+              <option value="类别排序">{tr("类别排序")}</option>
             </select>
           </div>
-          <div className="record-list" role="listbox" aria-label="收藏片段列表">
+          <div className="record-list" role="listbox" aria-label={tr("收藏片段列表")}>
             {items.map((item) => (
               <button
                 key={item.Id}
@@ -829,36 +826,35 @@ export function FavoritesPage() {
             ))}
             {!items.length && (
               <Empty
-                title={query ? "没有匹配的收藏" : "还没有收藏片段"}
-                description="在编辑器中选择有效词条后，点击收藏图标。"
+                title={query ? tr("没有匹配的收藏") : tr("还没有收藏片段")}
+                description={tr("在编辑器中选择有效词条后，点击收藏图标。")}
               />
             )}
           </div>
         </Panel>
         <Panel
           className="resource-detail"
-          title={f?.Name || "收藏详情"}
+          title={f?.Name || tr("收藏详情")}
           actions={
             f && (
               <>
                 <IconButton
                   icon={PencilSimple}
-                  label="修改收藏名称、类别与原文"
+                  label={tr("修改收藏名称、类别与原文")}
                   onClick={() => edit(f)}
                 />
                 <IconButton
                   icon={Trash}
-                  label="删除收藏片段"
+                  label={tr("删除收藏片段")}
                   onClick={async () => {
                     if (
                       (await app.confirm({
-                        title: "删除收藏片段？",
+                        title: tr("删除收藏片段？"),
                         body: (
                           <p>
-                            “{f.Name}”将从收藏库移除，已插入的视觉组不受影响。
-                          </p>
+                            “{f.Name}{tr("”将从收藏库移除，已插入的视觉组不受影响。")}</p>
                         ),
-                        confirm: "删除收藏",
+                        confirm: tr("删除收藏"),
                         danger: true,
                       })) === "confirm"
                     ) {
@@ -887,30 +883,29 @@ export function FavoritesPage() {
                   images={f.Images}
                   onChange={(images) => void saveImages(images)}
                 />
-                <Field label="提示词原文">
+                <Field label={tr("提示词原文")}>
                   <pre className="output-preview favorite-raw">{f.Text}</pre>
                 </Field>
               </div>
               <div className="resource-apply">
                 <select
-                  aria-label="收藏应用目标"
+                  aria-label={tr("收藏应用目标")}
                   value={target}
                   onChange={(e) => setTarget(e.target.value)}
                 >
-                  <option value="positive">积极提示词</option>
-                  <option value="negative">消极提示词</option>
+                  <option value="positive">{tr("积极提示词")}</option>
+                  <option value="negative">{tr("消极提示词")}</option>
                 </select>
                 <span className="hint selected-resource-name" title={f.Name}>
-                  {f.Name} · 插入为独立视觉组
-                </span>
+                  {f.Name}{" " + tr("· 插入为独立视觉组")}</span>
                 <span className="spacer" />
                 <IconButton
                   icon={Copy}
-                  label="复制收藏原文"
+                  label={tr("复制收藏原文")}
                   onClick={() =>
                     void navigator.clipboard
                       .writeText(f.Text)
-                      .then(() => app.notify("收藏原文已复制"))
+                      .then(() => app.notify(tr("收藏原文已复制")))
                   }
                 />
                 <button
@@ -926,17 +921,15 @@ export function FavoritesPage() {
                   }
                 >
                   <Plus size={16} />
-                  {target === "negative" ? "加入负向提示词" : "加入正向提示词"}
+                  {target === "negative" ? tr("加入负向提示词") : tr("加入正向提示词")}
                 </button>
               </div>
             </>
           ) : (
             <Empty
-              title="选择收藏片段查看详情"
+              title={tr("选择收藏片段查看详情")}
               action={
-                <button className="primary" disabled>
-                  加入{target === "negative" ? "负向" : "正向"}提示词
-                </button>
+                <button className="primary" disabled>{tr(target === "negative" ? "加入负向提示词" : "加入正向提示词")}</button>
               }
             />
           )}
@@ -967,14 +960,14 @@ function SourcesForm({
   const [busy, setBusy] = useState(false);
   return (
     <Modal
-      title="管理模型文件夹"
+      title={tr("管理模型文件夹")}
       width={760}
       onClose={onClose}
       footer={
         <>
-          <span className="hint">模型文件保持原位，不复制或移动模型</span>
+          <span className="hint">{tr("模型文件保持原位，不复制或移动模型")}</span>
           <span className="spacer" />
-          <button onClick={onClose}>取消</button>
+          <button onClick={onClose}>{tr("取消")}</button>
           <button
             className="primary"
             disabled={busy}
@@ -990,7 +983,7 @@ function SourcesForm({
               }
             }}
           >
-            {busy ? "扫描中…" : "保存并扫描"}
+            {busy ? tr("扫描中…") : tr("保存并扫描")}
           </button>
         </>
       }
@@ -999,7 +992,7 @@ function SourcesForm({
         {value.map((p, i) => (
           <div className="input-action" key={i}>
             <input
-              aria-label={`模型文件夹 ${i + 1}`}
+              aria-label={tr("模型文件夹 {0}", i + 1)}
               value={p}
               onChange={(e) =>
                 setValue(value.map((p, j) => (i === j ? e.target.value : p)))
@@ -1007,7 +1000,7 @@ function SourcesForm({
             />
             <IconButton
               icon={Trash}
-              label={`移除模型文件夹 ${p}`}
+              label={tr("移除模型文件夹 {0}", p)}
               onClick={() => setValue(value.filter((_, j) => j !== i))}
             />
           </div>
@@ -1026,12 +1019,8 @@ function SourcesForm({
           }
         }}
       >
-        <FolderOpen size={16} />
-        添加文件夹
-      </button>
-      <Notice>
-        不可用目录会显示错误并保留已有模型资料；失效模型记录仍可检索。
-      </Notice>
+        <FolderOpen size={16} />{tr("添加文件夹")}</button>
+      <Notice>{tr("不可用目录会显示错误并保留已有模型资料；失效模型记录仍可检索。")}</Notice>
       {error && <Notice error>{error}</Notice>}
     </Modal>
   );
@@ -1059,7 +1048,7 @@ function TextForm({
       footer={
         <>
           <span className="spacer" />
-          <button onClick={onClose}>取消</button>
+          <button onClick={onClose}>{tr("取消")}</button>
           <button
             className="primary"
             onClick={async () => {
@@ -1070,9 +1059,7 @@ function TextForm({
                 setError(String(e));
               }
             }}
-          >
-            保存
-          </button>
+          >{tr("保存")}</button>
         </>
       }
     >
@@ -1128,7 +1115,7 @@ export function LoraPage() {
     });
     void navigator.clipboard
       .writeText(values.join("\n"))
-      .then(() => app.notify(`已复制 ${values.length} 个模型名称`));
+      .then(() => app.notify(tr("已复制 {0} 个模型名称", values.length)));
   };
   const load = async () => {
     const next = await rpc<any>("lora.get");
@@ -1150,15 +1137,15 @@ export function LoraPage() {
     await app.act("lora.save", { value: draft });
     original.current = JSON.stringify(draft);
     await load();
-    app.notify("LoRA 资料已保存");
+    app.notify(tr("LoRA 资料已保存"));
   };
   const guard = async () => {
     if (!dirty) return true;
     const result = await app.confirm({
-      title: "保存模型资料修改？",
-      body: <p>当前模型资料有未保存的修改。</p>,
-      confirm: "保存资料",
-      third: "不保存",
+      title: tr("保存模型资料修改？"),
+      body: <p>{tr("当前模型资料有未保存的修改。")}</p>,
+      confirm: tr("保存资料"),
+      third: tr("不保存"),
     });
     if (result === "cancel") return false;
     if (result === "confirm") {
@@ -1265,15 +1252,13 @@ export function LoraPage() {
     try {
       const result = await app.act<any>("lora.controller", { ids });
       const answer = await app.confirm({
-        title: "核对模型并添加到控制器",
+        title: tr("核对模型并添加到控制器"),
         body: (
           <>
-            <p>已核对 {result.entries.length} 个模型的 ComfyUI 文件标识。</p>
-            <p className="hint">
-              目标 LoRA Manager：
-              {result.target
+            <p>{tr("已核对") + " "}{result.entries.length}{" " + tr("个模型的 ComfyUI 文件标识。")}</p>
+            <p className="hint">{tr("目标 LoRA Manager：")}{result.target
                 ? `#${result.target}`
-                : "尚未选择目标节点；请在模型控制页选择"}
+                : tr("尚未选择目标节点；请在模型控制页选择")}
             </p>
             <div className="controller-confirm-list">
               {result.entries.map((x: any, i: number) => (
@@ -1287,11 +1272,11 @@ export function LoraPage() {
             </div>
           </>
         ),
-        confirm: single ? "添加模型" : "整批添加",
+        confirm: single ? tr("添加模型") : tr("整批添加"),
       });
       if (answer === "confirm") {
         await app.act("lora.controller", { ids, confirm: true });
-        app.notify("已添加到 LoRA 控制器");
+        app.notify(tr("已添加到 LoRA 控制器"));
       }
     } catch (e) {
       app.reportError(String(e));
@@ -1318,8 +1303,8 @@ export function LoraPage() {
   const addLinks = (index?: number) =>
     app.modal(
       <TextForm
-        title={index == null ? "新增 LoRA 链接" : "修改 LoRA 链接"}
-        label={index == null ? "每行一个网页链接" : "网页链接"}
+        title={index == null ? tr("新增 LoRA 链接") : tr("修改 LoRA 链接")}
+        label={index == null ? tr("每行一个网页链接") : tr("网页链接")}
         initial={index == null ? "" : draft?.Links[index]}
         onClose={() => app.modal(null)}
         onSave={(text) => {
@@ -1330,12 +1315,12 @@ export function LoraPage() {
             .map((s) => {
               const u = new URL(s.includes("://") ? s : `https://${s}`);
               if (!["http:", "https:"].includes(u.protocol))
-                throw Error("仅支持 http / https 网页地址");
+                throw Error(tr("仅支持 http / https 网页地址"));
               return u.href;
             });
-          if (!values.length) throw Error("请至少输入一条链接");
+          if (!values.length) throw Error(tr("请至少输入一条链接"));
           if (index != null && values.length !== 1)
-            throw Error("单条编辑只允许一个链接");
+            throw Error(tr("单条编辑只允许一个链接"));
           if (draft)
             setDraft({
               ...draft,
@@ -1350,37 +1335,37 @@ export function LoraPage() {
   return (
     <div className={`standard-page ${expanded ? "lora-expanded" : ""}`}>
       <PageHeading
-        title={expanded ? "模型资料" : "LoRA 模型库"}
+        title={expanded ? tr("模型资料") : tr("LoRA 模型库")}
         description={
           expanded
             ? `${draft?.Name || ""} · ${draft?.ModelKey || ""}`
-            : "本机模型文件保持原位；封面、触发词和资料独立保存。"
+            : tr("本机模型文件保持原位；封面、触发词和资料独立保存。")
         }
         status={
           busy
-            ? "正在读取模型…"
+            ? tr("正在读取模型…")
             : dirty
-              ? "模型资料有未保存修改"
-              : "离线资料可用"
+              ? tr("模型资料有未保存修改")
+              : tr("离线资料可用")
         }
         actions={
           expanded ? (
             <>
               <IconButton
                 icon={ArrowLeft}
-                label="返回 LoRA 模型库"
+                label={tr("返回 LoRA 模型库")}
                 onClick={() => setExpanded(false)}
               />
               <IconButton
                 icon={FolderOpen}
-                label="打开模型文件夹"
+                label={tr("打开模型文件夹")}
                 onClick={() => {
                   if (draft) void reveal(draft.FilePath);
                 }}
               />
               <IconButton
                 icon={FloppyDisk}
-                label="保存资料修改"
+                label={tr("保存资料修改")}
                 className="primary"
                 disabled={!dirty}
                 onClick={() => void save().catch((e) => setError(String(e)))}
@@ -1390,7 +1375,7 @@ export function LoraPage() {
             <>
               <IconButton
                 icon={DownloadSimple}
-                label="读取 ComfyUI 目录与模型资料"
+                label={tr("读取 ComfyUI 目录与模型资料")}
                 disabled={busy}
                 onClick={async () => {
                   if (!(await guard())) return;
@@ -1409,13 +1394,13 @@ export function LoraPage() {
               />
               <IconButton
                 icon={FolderOpen}
-                label="管理本机模型文件夹"
+                label={tr("管理本机模型文件夹")}
                 disabled={busy}
                 onClick={sources}
               />
               <IconButton
                 icon={ArrowsClockwise}
-                label="刷新 LoRA 模型库"
+                label={tr("刷新 LoRA 模型库")}
                 disabled={busy}
                 onClick={() => void scan().catch((e) => app.reportError(String(e)))}
               />
@@ -1429,18 +1414,19 @@ export function LoraPage() {
             <div className="search-input">
               <MagnifyingGlass size={16} />
               <input
-                aria-label="搜索 LoRA 模型"
-                placeholder="搜索名称、别名、作品、触发词或标签…"
+                aria-label={tr("搜索 LoRA 模型")}
+                data-workspace-search
+                placeholder={tr("搜索名称、别名、作品、触发词或标签…")}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
             </div>
             <select
-              aria-label="基础模型筛选"
+              aria-label={tr("基础模型筛选")}
               value={base}
               onChange={(e) => setBase(e.target.value)}
             >
-              <option>全部基础模型</option>
+              <option value="全部基础模型">{tr("全部基础模型")}</option>
               {[...new Set(data.Items.map((i) => i.BaseModel).filter(Boolean))]
                 .sort()
                 .map((v) => (
@@ -1448,21 +1434,21 @@ export function LoraPage() {
                 ))}
             </select>
             <select
-              aria-label="模型文件夹筛选"
+              aria-label={tr("模型文件夹筛选")}
               value={folder}
               onChange={(e) => setFolder(e.target.value)}
             >
-              <option>全部文件夹</option>
+              <option value="全部文件夹">{tr("全部文件夹")}</option>
               {data.Roots.map((v) => (
                 <option key={v}>{v}</option>
               ))}
             </select>
             <select
-              aria-label="模型标签筛选"
+              aria-label={tr("模型标签筛选")}
               value={tag}
               onChange={(e) => setTag(e.target.value)}
             >
-              <option>全部标签</option>
+              <option value="全部标签">{tr("全部标签")}</option>
               {[...new Set(data.Items.flatMap((i) => i.Tags))]
                 .sort()
                 .map((v) => (
@@ -1471,7 +1457,7 @@ export function LoraPage() {
             </select>
             <IconButton
               icon={FunnelX}
-              label="清空所有 LoRA 筛选"
+              label={tr("清空所有 LoRA 筛选")}
               onClick={() => {
                 setQuery("");
                 setBase("全部基础模型");
@@ -1484,9 +1470,9 @@ export function LoraPage() {
           <div className="lora-filter-bottom">
             {(
               [
-                ["favorite", "仅收藏"],
-                ["missing", "仅缺失"],
-                ["added", "已添加"],
+                ["favorite", tr("仅收藏")],
+                ["missing", tr("仅缺失")],
+                ["added", tr("已添加")],
               ] as const
             ).map(([key, label]) => (
               <label key={key}>
@@ -1501,27 +1487,26 @@ export function LoraPage() {
               </label>
             ))}
             <span className="hint">
-              {items.length} / {data.Items.length} 个模型
-            </span>
+              {items.length} / {data.Items.length}{" " + tr("个模型")}</span>
             <span className="spacer" />
             <select
-              aria-label="LoRA 排序"
+              aria-label={tr("LoRA 排序")}
               value={sort}
               onChange={(e) => setSort(e.target.value)}
             >
-              <option>名称排序</option>
-              <option>文件大小</option>
-              <option>收藏优先</option>
+              <option value="名称排序">{tr("名称排序")}</option>
+              <option value="文件大小">{tr("文件大小")}</option>
+              <option value="收藏优先">{tr("收藏优先")}</option>
             </select>
             <IconButton
               icon={Tag}
-              label="批量添加标签"
+              label={tr("批量添加标签")}
               disabled={!selected.length}
               onClick={() =>
                 app.modal(
                   <TextForm
-                    title="批量添加标签"
-                    label={`将标签添加到选中的 ${selected.length} 个模型（逗号或换行分隔）`}
+                    title={tr("批量添加标签")}
+                    label={tr("将标签添加到选中的 {0} 个模型（逗号或换行分隔）", selected.length)}
                     onSave={(text) => batch("tags", { tags: text })}
                     onClose={() => app.modal(null)}
                   />,
@@ -1530,7 +1515,7 @@ export function LoraPage() {
             />
             <IconButton
               icon={Star}
-              label="批量收藏选中模型"
+              label={tr("批量收藏选中模型")}
               disabled={!selected.length}
               onClick={() =>
                 void batch("favorite", { favorite: true }).catch((e) =>
@@ -1540,7 +1525,7 @@ export function LoraPage() {
             />
             <IconButton
               icon={Copy}
-              label="复制选中模型名称"
+              label={tr("复制选中模型名称")}
               disabled={!selected.length}
               onClick={() =>
                 nameCopy(
@@ -1552,7 +1537,7 @@ export function LoraPage() {
             />
             <IconButton
               icon={ArrowUpRight}
-              label="核对后整批加入控制器"
+              label={tr("核对后整批加入控制器")}
               className="primary"
               disabled={!selected.length || busy}
               onClick={() => void controller(selected)}
@@ -1561,13 +1546,13 @@ export function LoraPage() {
         </Panel>
         <Panel
           className="lora-records"
-          title="模型"
-          actions={<span className="hint">已选 {selected.length} 项</span>}
+          title={tr("模型")}
+          actions={<span className="hint">{tr("已选") + " "}{selected.length}{" " + tr("项")}</span>}
         >
           <div
             className="lora-record-list"
             role="listbox"
-            aria-label="LoRA 模型列表"
+            aria-label={tr("LoRA 模型列表")}
             aria-multiselectable="true"
             tabIndex={0}
             onKeyDown={(e) => {
@@ -1604,9 +1589,9 @@ export function LoraPage() {
                   <span className="selection-rail" />
                   <div className="lora-thumbnail">
                     {item.Images[0] ? (
-                      <AsyncImage path={item.Images[0]} alt="模型封面" />
+                      <AsyncImage path={item.Images[0]} alt={tr("模型封面")} />
                     ) : (
-                      <img src="/icon.png" alt="默认封面" />
+                      <img src="/icon.png" alt={tr("默认封面")} />
                     )}
                   </div>
                   <span>
@@ -1618,10 +1603,10 @@ export function LoraPage() {
                       {item.Aliases ||
                         item.Series ||
                         item.BaseModel ||
-                        "未填写基础模型"}
+                        tr("未填写基础模型")}
                     </small>
                     <small title={item.ModelKey || item.FilePath}>
-                      {item.Missing ? "文件缺失 · " : ""}
+                      {item.Missing ? tr("文件缺失 · ") : ""}
                       {item.ModelKey || item.FilePath}
                     </small>
                   </span>
@@ -1633,15 +1618,13 @@ export function LoraPage() {
               <Empty
                 title={
                   data.Items.length
-                    ? "没有匹配的模型"
-                    : "添加你的第一个模型文件夹"
+                    ? tr("没有匹配的模型")
+                    : tr("添加你的第一个模型文件夹")
                 }
-                description="扫描本机目录，或读取 ComfyUI 的 LoRA 目录。"
+                description={tr("扫描本机目录，或读取 ComfyUI 的 LoRA 目录。")}
                 action={
                   <button onClick={sources}>
-                    <FolderOpen size={16} />
-                    管理文件夹
-                  </button>
+                    <FolderOpen size={16} />{tr("管理文件夹")}</button>
                 }
               />
             )}
@@ -1649,21 +1632,21 @@ export function LoraPage() {
         </Panel>
         <Panel
           className="lora-detail"
-          title={draft?.Name || "模型资料"}
+          title={draft?.Name || tr("模型资料")}
           actions={
             draft && (
               <>
-                <IconButton icon={Flask} label="试试该 LoRA 的效果" onClick={() => openProbe(draft.ModelKey,"lora")}/>
-                <IconButton icon={ArrowUpRight} label="将当前 LoRA 加入控制器"
+                <IconButton icon={Flask} label={tr("试试该 LoRA 的效果")} onClick={() => openProbe(draft.ModelKey,"lora")}/>
+                <IconButton icon={ArrowUpRight} label={tr("将当前 LoRA 加入控制器")}
                   disabled={busy} onClick={() => void controller([draft.Id], true)} />
                 <IconButton
                   icon={ArrowsOut}
-                  label="展开模型资料"
+                  label={tr("展开模型资料")}
                   onClick={() => setExpanded(true)}
                 />
                 <IconButton
                   icon={FolderOpen}
-                  label="打开模型所在文件夹"
+                  label={tr("打开模型所在文件夹")}
                   onClick={() =>
                     void reveal(draft.FilePath).catch((e) =>
                       app.reportError(String(e)),
@@ -1672,7 +1655,7 @@ export function LoraPage() {
                 />
                 <IconButton
                   icon={ArrowCounterClockwise}
-                  label="放弃资料修改"
+                  label={tr("放弃资料修改")}
                   disabled={!dirty}
                   onClick={() => {
                     const item = data.Items.find((x) => x.Id === draft.Id);
@@ -1685,7 +1668,7 @@ export function LoraPage() {
                 />
                 <IconButton
                   icon={FloppyDisk}
-                  label="保存模型资料"
+                  label={tr("保存模型资料")}
                   className="primary"
                   disabled={!dirty}
                   onClick={() => void save().catch((e) => setError(String(e)))}
@@ -1702,7 +1685,7 @@ export function LoraPage() {
                   {draft.ModelKey || draft.FilePath}
                 </p>
                 {draft.Missing && (
-                  <Notice error>模型文件缺失，已保留资料与参考图。</Notice>
+                  <Notice error>{tr("模型文件缺失，已保留资料与参考图。")}</Notice>
                 )}
               </div>
               <ReferenceImages
@@ -1711,9 +1694,9 @@ export function LoraPage() {
                 onChange={(images) => setDraft({ ...draft, Images: images })}
               />
               <section className="lora-metadata-form">
-                <h3>模型资料</h3>
+                <h3>{tr("模型资料")}</h3>
                 <div className="form-columns">
-                  <Field label="显示名称">
+                  <Field label={tr("显示名称")}>
                     <input
                       value={draft.Name}
                       onChange={(e) =>
@@ -1721,7 +1704,7 @@ export function LoraPage() {
                       }
                     />
                   </Field>
-                  <Field label="角色别名">
+                  <Field label={tr("角色别名")}>
                     <input
                       value={draft.Aliases}
                       onChange={(e) =>
@@ -1731,7 +1714,7 @@ export function LoraPage() {
                   </Field>
                 </div>
                 <div className="form-columns">
-                  <Field label="作品 / 系列">
+                  <Field label={tr("作品 / 系列")}>
                     <input
                       value={draft.Series}
                       onChange={(e) =>
@@ -1739,7 +1722,7 @@ export function LoraPage() {
                       }
                     />
                   </Field>
-                  <Field label="基础模型">
+                  <Field label={tr("基础模型")}>
                     <input
                       value={draft.BaseModel}
                       onChange={(e) =>
@@ -1748,7 +1731,7 @@ export function LoraPage() {
                     />
                   </Field>
                 </div>
-                <Field label="标签（逗号分隔）">
+                <Field label={tr("标签（逗号分隔）")}>
                   <input
                     value={draft.Tags.join(", ")}
                     onChange={(e) =>
@@ -1768,7 +1751,7 @@ export function LoraPage() {
                   />
                 </Field>
                 <div className="form-columns">
-                  <Field label="推荐 Model 强度">
+                  <Field label={tr("推荐 Model 强度")}>
                     <input
                       type="number"
                       min="-20"
@@ -1780,7 +1763,7 @@ export function LoraPage() {
                       }
                     />
                   </Field>
-                  <Field label="推荐 CLIP 强度">
+                  <Field label={tr("推荐 CLIP 强度")}>
                     <input
                       type="number"
                       min="-20"
@@ -1795,26 +1778,24 @@ export function LoraPage() {
                       }
                     />
                   </Field>
-                  <label className="inline-label">
-                    收藏模型
-                    <Switch
+                  <label className="inline-label">{tr("收藏模型")}<Switch
                       checked={draft.Favorite}
-                      label="收藏此模型"
+                      label={tr("收藏此模型")}
                       onChange={(v) => setDraft({ ...draft, Favorite: v })}
                     />
                   </label>
                 </div>
                 <div className="lora-trigger-field">
                 <div className="lora-trigger-actions">
-                  <IconButton icon={Copy} label="复制触发词" disabled={!draft.Triggers.trim()}
+                  <IconButton icon={Copy} label={tr("复制触发词")} disabled={!draft.Triggers.trim()}
                     onClick={() => void navigator.clipboard.writeText(draft.Triggers)
-                      .then(() => app.notify("已复制触发词")).catch((e) => app.reportError(String(e)))} />
-                  <IconButton icon={Plus} label="插入触发词" disabled={!draft.Triggers.trim()}
+                      .then(() => app.notify(tr("已复制触发词"))).catch((e) => app.reportError(String(e)))} />
+                  <IconButton icon={Plus} label={tr("插入触发词")} disabled={!draft.Triggers.trim()}
                     onClick={() => void insertTriggers(draft, false)} />
-                  <IconButton icon={Stack} label="将触发词作为组插入" disabled={!draft.Triggers.trim()}
+                  <IconButton icon={Stack} label={tr("将触发词作为组插入")} disabled={!draft.Triggers.trim()}
                     onClick={() => void insertTriggers(draft, true)} />
                 </div>
-                <Field label="触发词">
+                <Field label={tr("触发词")}>
                   <textarea
                     rows={Math.max(
                       2,
@@ -1828,7 +1809,7 @@ export function LoraPage() {
                   />
                 </Field>
                 </div>
-                <Field label="备注">
+                <Field label={tr("备注")}>
                   <textarea
                     rows={3}
                     value={draft.Notes}
@@ -1843,7 +1824,7 @@ export function LoraPage() {
                   <h3>Link</h3>
                   <IconButton
                     icon={Plus}
-                    label="批量新增网页链接"
+                    label={tr("批量新增网页链接")}
                     onClick={() => addLinks()}
                   />
                 </div>
@@ -1864,12 +1845,12 @@ export function LoraPage() {
                       </button>
                       <IconButton
                         icon={PencilSimple}
-                        label={`修改链接 ${i + 1}`}
+                        label={tr("修改链接 {0}", i + 1)}
                         onClick={() => addLinks(i)}
                       />
                       <IconButton
                         icon={Trash}
-                        label={`删除链接 ${i + 1}`}
+                        label={tr("删除链接 {0}", i + 1)}
                         onClick={() =>
                           setDraft({
                             ...draft,
@@ -1879,7 +1860,7 @@ export function LoraPage() {
                       />
                       <IconButton
                         icon={ArrowUpRight}
-                        label={`打开链接 ${i + 1}`}
+                        label={tr("打开链接 {0}", i + 1)}
                         onClick={() =>
                           void openExternal(link).catch((e) =>
                             app.reportError(String(e)),
@@ -1891,12 +1872,10 @@ export function LoraPage() {
                 </div>
               </section>
               {error && <Notice error>{error}</Notice>}
-              <p className="hint lora-detail-footnote">
-                修改后点击“保存资料”。LoRA 文件内容不会被改写。
-              </p>
+              <p className="hint lora-detail-footnote">{tr("修改后点击“保存资料”。LoRA 文件内容不会被改写。")}</p>
             </div>
           ) : (
-            <Empty title="选择模型查看资料" />
+            <Empty title={tr("选择模型查看资料")} />
           )}
         </Panel>
       </div>

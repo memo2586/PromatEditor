@@ -1,3 +1,4 @@
+import { tr } from "./i18n";
 import { useLayoutEffect, useRef, type RefObject } from "react";
 import { previewSort, type DragPayload, type SortIntent } from "./editor-sort";
 import type { Workspace } from "./types";
@@ -197,7 +198,7 @@ export function usePointerSort(
         if ((drag.payload.ids?.length || 0) > 1) {
           const badge = document.createElement("span");
           badge.className = "sort-count";
-          badge.textContent = `${drag.payload.ids!.length} 项`;
+          badge.textContent = tr("{0} 项", drag.payload.ids!.length);
           copy.append(badge);
         }
         tick();

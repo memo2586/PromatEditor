@@ -1,6 +1,7 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
+import { setLocale } from "./i18n";
 import "./style.css";
 import "./comfy-link.css";
 import "./comfy-results.css";
@@ -18,4 +19,5 @@ window.addEventListener("keydown", (e) => {
     document.documentElement.dataset.focusInput = "keyboard";
 }, true);
 
+setLocale("system");
 createRoot(document.getElementById("root")!).render(<App />);

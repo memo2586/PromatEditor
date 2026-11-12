@@ -1,3 +1,4 @@
+import { tr } from "./i18n";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -5,8 +6,8 @@ export function ModelPicker({
   value,
   options,
   onChange,
-  label = "搜索或选择 LoRA",
-  listLabel = "可选 LoRA",
+  label = tr("搜索或选择 LoRA"),
+  listLabel = tr("可选 LoRA"),
   modelType = "LoRA",
 }: {
   value: string;
@@ -166,8 +167,8 @@ export function ModelPicker({
             ) : (
               <p role="status">
                 {options.length
-                  ? `没有匹配的 ${modelType}`
-                  : "请先读取节点与模型"}
+                  ? tr("没有匹配的 {0}", modelType)
+                  : tr("请先读取节点与模型")}
               </p>
             )}
           </div>,

@@ -1738,7 +1738,8 @@ async fn rpc(
     let shared = state.inner().clone();
     tauri::async_runtime::spawn_blocking(move || {
         if method == "runs.feedback" {
-            return comfy_link::feedback_shared(&shared, app);
+            let english = payload.as_ref().is_some_and(|value| get(value, "locale") == "en");
+            return comfy_link::feedback_shared(&shared, app, english);
         }
         dispatch_rpc(&shared, &method, payload.unwrap_or(json!({})))
     })

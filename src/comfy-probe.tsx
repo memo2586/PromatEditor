@@ -1,3 +1,4 @@
+import { getLocale, tr } from "./i18n";
 import {
   Images,
   Play,
@@ -130,7 +131,7 @@ export function ProbePage() {
     setBusy(true);
     try {
       if (!/^\d+$/.test(seed) || !Number.isSafeInteger(Number(seed)))
-        throw Error("请输入有效的固定 Seed");
+        throw Error(tr("请输入有效的固定 Seed"));
       await app.flush.current();
       for (const f of app.draftFlushers.current.values()) await f();
       const input =
@@ -145,7 +146,7 @@ export function ProbePage() {
         input.length > 16 ||
         input.some((v) => !Number.isFinite(v))
       )
-        throw Error("请输入 1–16 个有效扫描值");
+        throw Error(tr("请输入 1–16 个有效扫描值"));
       const p = await rpc<any>("runs.probe.prepare", {
         seed: Number(seed),
         client_id: link.client,
@@ -173,7 +174,7 @@ export function ProbePage() {
       setProbeId(p.id);
       localStorage.setItem("comfy-probe-id", p.id);
       await link.poll();
-      app.notify("已锁定探针基线与 Seed；后续编辑不影响变体");
+      app.notify(tr("已锁定探针基线与 Seed；后续编辑不影响变体"));
       return p;
     } catch (e) {
       app.reportError(String(e));
@@ -206,18 +207,15 @@ export function ProbePage() {
       (r) => r.prompt_id && queue?.running.includes(r.prompt_id),
     )?.prompt_id;
     if (!ids.length && !current) {
-      app.notify("没有已确认受理的探针任务；未知受理须先核对队列");
+      app.notify(tr("没有已确认受理的探针任务；未知受理须先核对队列"));
       return;
     }
     const answer = await app.confirm({
-      title: "取消此探针未完成任务？",
+      title: tr("取消此探针未完成任务？"),
       body: (
-        <p>
-          取消 {ids.length} 个等待任务{current ? "，并中断此探针当前任务" : ""}
-          。保留所有已完成结果；其他任务继续保留。
-        </p>
+        <p>{tr("取消") + " "}{ids.length}{" " + tr("个等待任务")}{current ? tr("，并中断此探针当前任务") : ""}{tr("。保留所有已完成结果；其他任务继续保留。")}</p>
       ),
-      confirm: "确认取消",
+      confirm: tr("确认取消"),
       danger: true,
     });
     if (answer !== "confirm") return;
@@ -250,7 +248,7 @@ export function ProbePage() {
         variant_index: index,
         revision: d.revision,
       });
-      app.notify("已应用探针值 · Ctrl+Z 可撤销");
+      app.notify(tr("已应用探针值 · Ctrl+Z 可撤销"));
     } catch (e) {
       app.reportError(String(e));
     } finally {
@@ -280,9 +278,9 @@ export function ProbePage() {
   return (
     <div className="probe-page">
       <header className="page-header">
-        <h1>词条效果探针</h1>
+        <h1>{tr("词条效果探针")}</h1>
         <span className="spacer" />
-        <button onClick={() => app.open("runs")}>关闭</button>
+        <button onClick={() => app.open("runs")}>{tr("关闭")}</button>
         <button
           className="primary"
           disabled={
@@ -302,7 +300,7 @@ export function ProbePage() {
           }}
         >
           <Play size={16} />
-          {probe ? `生成未完成项 (${pending})` : `生成 ${plannedCount} 张`}
+          {probe ? tr("生成未完成项 ({0})", pending) : tr("生成 {0} 张", plannedCount)}
         </button>
       </header>
       <div className="probe-body">
@@ -313,15 +311,14 @@ export function ProbePage() {
               clearProbe();
           }}
         >
-          <h2>试试效果</h2>
-          <p className="hint">
-            从词条菜单进入 ·{" "}
-            {targets.find((t) => t.id === target)?.label || "选择扫描目标"}
+          <h2>{tr("试试效果")}</h2>
+          <p className="hint">{tr("从词条菜单进入 ·")}{" "}
+            {targets.find((t) => t.id === target)?.label || tr("选择扫描目标")}
           </p>
           <div className="probe-kind">
-            <span>变量</span>
+            <span>{tr("变量")}</span>
             <Segments
-              label="探针变量"
+              label={tr("探针变量")}
               value={kind}
               onChange={(v) => {
                 clearProbe();
@@ -329,36 +326,32 @@ export function ProbePage() {
                 setTarget("");
               }}
               items={[
-                { value: "weight", label: "权重" },
-                { value: "presence", label: "有无" },
+                { value: "weight", label: tr("权重") },
+                { value: "presence", label: tr("有无") },
                 { value: "lora", label: "LoRA" },
               ]}
             />
           </div>
           {kind !== "lora" && negative && (
-            <label>
-              工作区
-              <select
-                aria-label="探针工作区"
+            <label>{tr("工作区")}<select
+                aria-label={tr("探针工作区")}
                 value={String(negative)}
                 onChange={(e) => {
                   setNegative(e.target.value === "true");
                   setTarget("");
                 }}
               >
-                <option value="false">积极提示词</option>
-                <option value="true">消极提示词</option>
+                <option value="false">{tr("积极提示词")}</option>
+                <option value="true">{tr("消极提示词")}</option>
               </select>
             </label>
           )}
-          <label>
-            目标词条
-            <select
-              aria-label="探针目标"
+          <label>{tr("目标词条")}<select
+              aria-label={tr("探针目标")}
               value={target}
               onChange={(e) => setTarget(e.target.value)}
             >
-              <option value="">选择扫描目标</option>
+              <option value="">{tr("选择扫描目标")}</option>
               {targets.map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.label}
@@ -367,20 +360,18 @@ export function ProbePage() {
             </select>
           </label>
           {kind !== "presence" && (
-            <label>
-              X 轴 · {kind === "lora" ? "LoRA强度" : "权重"}取值
-              <input
-                aria-label="探针扫描值"
+            <label>{tr("X 轴 · {0}取值", tr(kind === "lora" ? "LoRA强度" : "权重"))}<input
+                aria-label={tr("探针扫描值")}
                 value={values}
                 onChange={(e) => setValues(e.target.value)}
               />
             </label>
           )}
           <div className="probe-y-toggle">
-            <span>Y 轴 · {yEnabled ? "已启用" : "无"}</span>
+            <span>{tr("Y 轴 ·") + " "}{yEnabled ? tr("已启用") : tr("无")}</span>
             <IconButton
               icon={yEnabled ? Minus : Plus}
-              label={yEnabled ? "移除 Y 轴扫描变量" : "增加 Y 轴扫描变量"}
+              label={yEnabled ? tr("移除 Y 轴扫描变量") : tr("增加 Y 轴扫描变量")}
               onClick={() => {
                 clearProbe();
                 setYEnabled((v) => !v);
@@ -389,46 +380,40 @@ export function ProbePage() {
           </div>
           {yEnabled && (
             <fieldset>
-              <legend>Y 轴（组合最多16张）</legend>
-              <label>
-                变量
-                <select
-                  aria-label="Y 轴变量"
+              <legend>{tr("Y 轴（组合最多16张）")}</legend>
+              <label>{tr("变量")}<select
+                  aria-label={tr("Y 轴变量")}
                   value={yKind}
                   onChange={(e) => {
                     setYKind(e.target.value);
                     setYTarget("");
                   }}
                 >
-                  <option value="weight">词条权重</option>
-                  <option value="presence">词条有无</option>
-                  <option value="lora">LoRA 强度</option>
+                  <option value="weight">{tr("词条权重")}</option>
+                  <option value="presence">{tr("词条有无")}</option>
+                  <option value="lora">{tr("LoRA 强度")}</option>
                 </select>
               </label>
               {yKind !== "lora" && (
-                <label>
-                  工作区
-                  <select
-                    aria-label="Y 轴工作区"
+                <label>{tr("工作区")}<select
+                    aria-label={tr("Y 轴工作区")}
                     value={String(yNegative)}
                     onChange={(e) => {
                       setYNegative(e.target.value === "true");
                       setYTarget("");
                     }}
                   >
-                    <option value="false">积极提示词</option>
-                    <option value="true">消极提示词</option>
+                    <option value="false">{tr("积极提示词")}</option>
+                    <option value="true">{tr("消极提示词")}</option>
                   </select>
                 </label>
               )}
-              <label>
-                目标
-                <select
-                  aria-label="Y 轴目标"
+              <label>{tr("目标")}<select
+                  aria-label={tr("Y 轴目标")}
                   value={yTarget}
                   onChange={(e) => setYTarget(e.target.value)}
                 >
-                  <option value="">选择第二个目标</option>
+                  <option value="">{tr("选择第二个目标")}</option>
                   {yTargets.map((t) => (
                     <option key={t.id} value={t.id}>
                       {t.label}
@@ -437,10 +422,8 @@ export function ProbePage() {
                 </select>
               </label>
               {yKind !== "presence" && (
-                <label>
-                  扫描值
-                  <input
-                    aria-label="Y 轴扫描值"
+                <label>{tr("扫描值")}<input
+                    aria-label={tr("Y 轴扫描值")}
                     value={yValues}
                     onChange={(e) => setYValues(e.target.value)}
                   />
@@ -450,54 +433,43 @@ export function ProbePage() {
           )}
           <label className="probe-seed">
             <span>
-              <Lock size={16} />
-              固定 Seed
-            </span>
+              <Lock size={16} />{tr("固定 Seed")}</span>
             <input
-              aria-label="探针固定 Seed"
+              aria-label={tr("探针固定 Seed")}
               inputMode="numeric"
               value={seed}
               onChange={(e) => setSeed(e.target.value)}
             />
           </label>
-          <p className="hint">其余参数来自锁定基线，重试仍保持</p>
+          <p className="hint">{tr("其余参数来自锁定基线，重试仍保持")}</p>
           <p>
-            {probe?.values.length || plannedCount} 个变体 · 进度来自真实执行
-          </p>
-          <p className="hint">
-            单张 {probe?.generation.width || app.data.generation.width} ×{" "}
+            {probe?.values.length || plannedCount}{" " + tr("个变体 · 进度来自真实执行")}</p>
+          <p className="hint">{tr("单张") + " "}{probe?.generation.width || app.data.generation.width} ×{" "}
             {probe?.generation.height || app.data.generation.height} ·{" "}
             {probe?.generation.sampler || app.data.generation.sampler} ·{" "}
-            {probe?.generation.steps || app.data.generation.steps} 步
-          </p>
+            {probe?.generation.steps || app.data.generation.steps}{" " + tr("步")}</p>
           <details className="probe-advanced">
-            <summary>更多配置与已保存探针</summary>
+            <summary>{tr("更多配置与已保存探针")}</summary>
             {kind !== "lora" && !negative && (
-              <label>
-                工作区
-                <select
-                  aria-label="探针工作区"
+              <label>{tr("工作区")}<select
+                  aria-label={tr("探针工作区")}
                   value={String(negative)}
                   onChange={(e) => {
                     setNegative(e.target.value === "true");
                     setTarget("");
                   }}
                 >
-                  <option value="false">积极提示词</option>
-                  <option value="true">消极提示词</option>
+                  <option value="false">{tr("积极提示词")}</option>
+                  <option value="true">{tr("消极提示词")}</option>
                 </select>
               </label>
             )}
             <button
               disabled={busy || !target || (yEnabled && !yTarget)}
               onClick={() => void capture()}
-            >
-              锁定新探针基线
-            </button>
-            <label className="probe-saved">
-              已保存的探针
-              <select
-                aria-label="已保存的探针"
+            >{tr("锁定新探针基线")}</button>
+            <label className="probe-saved">{tr("已保存的探针")}<select
+                aria-label={tr("已保存的探针")}
                 value={probeId}
                 onChange={(e) => {
                   setProbeId(e.target.value);
@@ -506,13 +478,13 @@ export function ProbePage() {
                   localStorage.setItem("comfy-probe-id", e.target.value);
                 }}
               >
-                <option value="">选择探针</option>
+                <option value="">{tr("选择探针")}</option>
                 {probes
                   .slice()
                   .reverse()
                   .map((p) => (
                     <option key={p.id} value={p.id}>
-                      {new Date(p.created).toLocaleString()} ·{" "}
+                      {new Date(p.created).toLocaleString(getLocale())} ·{" "}
                       {p.target_label || p.kind}
                       {p.y_axis ? " · X/Y" : ""}
                     </option>
@@ -521,42 +493,37 @@ export function ProbePage() {
             </label>
             {probe && (
               <>
-                <p>
-                  已完成 {done}/{probe.values.length} · 待生成/重试 {pending}
+                <p>{tr("已完成") + " "}{done}/{probe.values.length}{" " + tr("· 待生成/重试") + " "}{pending}
                 </p>
                 <progress
-                  aria-label="探针完成进度"
+                  aria-label={tr("探针完成进度")}
                   value={done}
                   max={probe.values.length}
                 />
-                <button disabled={busy} onClick={() => void cancel()}>
-                  取消未完成任务
-                </button>
+                <button disabled={busy} onClick={() => void cancel()}>{tr("取消未完成任务")}</button>
               </>
             )}
           </details>
-          <p className="hint">独立快照 · 取消保留已完成结果</p>
+          <p className="hint">{tr("独立快照 · 取消保留已完成结果")}</p>
         </aside>
         <section className="probe-results">
           <header>
             <h2>
               {probe?.target_label ||
                 targets.find((t) => t.id === target)?.label ||
-                "选择目标"}{" "}
+                tr("选择目标")}{" "}
               ·{" "}
               {(probe?.kind || kind) === "presence"
-                ? "有无对比"
+                ? tr("有无对比")
                 : (probe?.kind || kind) === "lora"
-                  ? "LoRA 强度扫描"
-                  : "权重扫描"}
+                  ? tr("LoRA 强度扫描")
+                  : tr("权重扫描")}
             </h2>
             <small>
-              {done} / {probe?.values.length || 0} 已完成
-            </small>
+              {done} / {probe?.values.length || 0}{" " + tr("已完成")}</small>
           </header>
-          <p className="hint">
-            固定 Seed {probe?.generation.seed ?? seed} ·{" "}
-            {probe?.y_axis ? "X / Y 双轴变量" : "仅改变 X 轴变量"}
+          <p className="hint">{tr("固定 Seed") + " "}{probe?.generation.seed ?? seed} ·{" "}
+            {probe?.y_axis ? tr("X / Y 双轴变量") : tr("仅改变 X 轴变量")}
           </p>
           <div className="probe-grid">
             {probe ? (
@@ -581,14 +548,14 @@ export function ProbePage() {
                         ? valueLabel(i)
                         : probe.kind === "presence"
                           ? value
-                            ? "有"
-                            : "无"
+                            ? tr("有")
+                            : tr("无")
                           : value.toFixed(1)}
                     </h3>
                     {run?.outputs.length ? (
                       <button
                         className="probe-result"
-                        aria-label={`查看探针结果大图 ${valueLabel(i)}`}
+                        aria-label={tr("查看探针结果大图 {0}", valueLabel(i))}
                         onClick={(e) => {
                           if (e.ctrlKey || e.metaKey || e.shiftKey)
                             setComparison((v) =>
@@ -609,10 +576,10 @@ export function ProbePage() {
                       </button>
                     ) : (
                       <div className="probe-placeholder">
-                        <span>{labels[run?.status || ""] || "未提交"}</span>
+                        <span>{tr(labels[run?.status || ""] || "") || tr("未提交")}</span>
                         {progress?.max && (
                           <progress
-                            aria-label={`变体 ${value} 当前节点进度`}
+                            aria-label={tr("变体 {0} 当前节点进度", value)}
                             value={progress.value || 0}
                             max={progress.max}
                           />
@@ -622,23 +589,22 @@ export function ProbePage() {
                     )}
                     <p className="probe-caption">
                       {isCurrent
-                        ? "当前值"
+                        ? tr("当前值")
                         : `#P${String(i + 1).padStart(2, "0")}`}
                     </p>
                     {run?.outputs.length ? (
                       <div className="probe-apply-slot">
-                        <span className="probe-apply-hint">悬停以应用</span>
+                        <span className="probe-apply-hint">{tr("悬停以应用")}</span>
                         <button
                           className="probe-apply primary"
                           disabled={busy}
                           onClick={() => void applyVariant(run, i)}
-                        >
-                          应用 {valueLabel(i)}
+                        >{tr("应用") + " "}{valueLabel(i)}
                         </button>
                       </div>
                     ) : (
                       <span className="hint">
-                        {run ? labels[run.status] : "等待生成"}
+                        {run ? tr(labels[run.status] || "") : tr("等待生成")}
                       </span>
                     )}
                     {run?.error && <RunError run={run} />}
@@ -646,41 +612,35 @@ export function ProbePage() {
                 );
               })
             ) : (
-              <p className="hint">
-                配置并锁定基线后生成独立变体；取消保留已完成图。
-              </p>
+              <p className="hint">{tr("配置并锁定基线后生成独立变体；取消保留已完成图。")}</p>
             )}
           </div>
           <section className="probe-selection">
             <h3>
               {selectedIndex === null
-                ? "选择结果查看应用值"
-                : `选中 ${valueLabel(selectedIndex)}`}
+                ? tr("选择结果查看应用值")
+                : tr("选中 {0}", valueLabel(selectedIndex))}
             </h3>
             {selectedIndex !== null && probe && (
               <p className="changed">
                 {probe.target_label}{" "}
                 {probe.kind === "weight"
                   ? (workspace.Active.find((t) => t.Id === probe.target)
-                      ?.Weight ?? "未知")
-                  : "当前值"}{" "}
+                      ?.Weight ?? tr("未知"))
+                  : tr("当前值")}{" "}
                 → {valueLabel(selectedIndex)}
                 {probe.y_axis
                   ? ` · ${probe.y_axis.target_label} → ${probe.y_values[selectedIndex]}`
                   : ""}
               </p>
             )}
-            <p className="hint">应用扫描值到当前目标词条，可 Ctrl+Z 撤销</p>
-            <p className="hint">
-              点击结果可放大；Ctrl / Shift 选两张进入 A/B 对比
-            </p>
+            <p className="hint">{tr("应用扫描值到当前目标词条，可 Ctrl+Z 撤销")}</p>
+            <p className="hint">{tr("点击结果可放大；Ctrl / Shift 选两张进入 A/B 对比")}</p>
             <button
               disabled={comparison.length !== 2}
               onClick={() => setCompare(true)}
             >
-              <ArrowsLeftRight size={16} />
-              A/B 对比
-            </button>
+              <ArrowsLeftRight size={16} />{tr("A/B 对比")}</button>
           </section>
         </section>
       </div>

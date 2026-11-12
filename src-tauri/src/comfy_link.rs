@@ -1600,7 +1600,11 @@ impl LinkStore {
         }
     }
 }
-pub(super) fn feedback_shared(shared: &Shared, app: tauri::AppHandle) -> Result<Value, String> {
+pub(super) fn feedback_shared(
+    shared: &Shared,
+    app: tauri::AppHandle,
+    english: bool,
+) -> Result<Value, String> {
     use tauri::window::{ProgressBarState, ProgressBarStatus};
     let window = app.get_webview_window("main").ok_or("原生窗口不可用")?;
     let focused = window.is_focused().unwrap_or(true);
@@ -1709,7 +1713,13 @@ pub(super) fn feedback_shared(shared: &Shared, app: tauri::AppHandle) -> Result<
                 let run_id = run.request_id.clone();
                 let handle = app.clone();
                 let used = std::sync::atomic::AtomicBool::new(false);
-                let toast=Toast::new(app_id).title("生成完成").text1(&format!("Seed {} · {} 张结果",run.snapshot["generation"]["seed"],run.outputs.len())).add_button("查看","view").add_button("再来一张","again").on_activated(move |action|{
+                let (title, view, again, results) = if english {
+                    ("Generation complete", "View", "Generate again", "results")
+                } else {
+                    ("生成完成", "查看", "再来一张", "张结果")
+                };
+                let summary = format!("Seed {} · {} {results}", run.snapshot["generation"]["seed"], run.outputs.len());
+                let toast=Toast::new(app_id).title(title).text1(&summary).add_button(view,"view").add_button(again,"again").on_activated(move |action|{
                     if used.swap(true,std::sync::atomic::Ordering::SeqCst) {return Ok(());}
                     if let Some(w)=handle.get_webview_window("main") {let _=w.show();let _=w.unminimize();let _=w.set_focus();}
                     let _=handle.emit("generation-notification-action",json!({"request_id":run_id,"action":action.unwrap_or_else(||"view".into())}));Ok(())

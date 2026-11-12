@@ -1,3 +1,4 @@
+import { tr } from "./i18n";
 import { useEffect, useRef, useState } from "react";
 import { ArrowsLeftRight, ArrowsOut, ArrowsIn, X } from "@phosphor-icons/react";
 import { IconButton } from "./ui";
@@ -62,35 +63,31 @@ export function CompareResults({
       tabIndex={-1}
       className={`compare-page ${full ? "expanded" : ""}`}
       role="region"
-      aria-label="A/B 对比"
+      aria-label={tr("A/B 对比")}
     >
       <header className="page-header">
-        <h1>A/B 对比</h1>
+        <h1>{tr("A/B 对比")}</h1>
         <span className="spacer" />
         <button aria-expanded={details} onClick={() => setDetails((v) => !v)}>
-          {details ? "收起差异" : "显示差异"}
+          {details ? tr("收起差异") : tr("显示差异")}
         </button>
         <IconButton
           icon={ArrowsLeftRight}
-          label="交换 A / B"
+          label={tr("交换 A / B")}
           onClick={() => setSwap((v) => !v)}
         />
         <IconButton
           icon={full ? ArrowsIn : ArrowsOut}
-          label={full ? "退出全屏对比" : "全屏对比"}
+          label={full ? tr("退出全屏对比") : tr("全屏对比")}
           onClick={() => setFull((v) => !v)}
         />
-        <button disabled={busy} onClick={() => void adopt(a.run)}>
-          采用 A
-        </button>
+        <button disabled={busy} onClick={() => void adopt(a.run)}>{tr("采用 A")}</button>
         <button
           className="primary"
           disabled={busy}
           onClick={() => void adopt(b.run)}
-        >
-          采用 B
-        </button>
-        <IconButton icon={X} label="关闭 A/B 对比" onClick={onClose} />
+        >{tr("采用 B")}</button>
+        <IconButton icon={X} label={tr("关闭 A/B 对比")} onClick={onClose} />
       </header>
       <div className={`compare-content ${details ? "with-details" : ""}`}>
         <div className="compare-stage">
@@ -144,7 +141,7 @@ export function CompareResults({
                 >
                   <button
                     role="slider"
-                    aria-label="A/B 分界位置"
+                    aria-label={tr("A/B 分界位置")}
                     aria-valuemin={0}
                     aria-valuemax={100}
                     aria-valuenow={Math.round(position)}
@@ -183,8 +180,8 @@ export function CompareResults({
         <div className="compare-diffs" hidden={!details}>
           <section>
             <header>
-              <h3>提示词差异 · A → B</h3>
-              <small>{differences.length} 处</small>
+              <h3>{tr("提示词差异 · A → B")}</h3>
+              <small>{differences.length}{" " + tr("处")}</small>
             </header>
             {differences.map((s, i) => (
               <p
@@ -193,22 +190,20 @@ export function CompareResults({
               >
                 <span>
                   {s.startsWith("+")
-                    ? "新增"
+                    ? tr("新增")
                     : s.startsWith("−")
-                      ? "移除"
-                      : "权重 / 结构"}
+                      ? tr("移除")
+                      : tr("权重 / 结构")}
                 </span>
                 <strong>{s.replace(/^[+−]/, "")}</strong>
               </p>
             ))}
-            {!differences.length && <p className="hint">提示词相同</p>}
-            <p className="compare-adopt-hint">
-              采用 A / B 将恢复对应图的完整参数，可 Ctrl+Z 撤销
-            </p>
+            {!differences.length && <p className="hint">{tr("提示词相同")}</p>}
+            <p className="compare-adopt-hint">{tr("采用 A / B 将恢复对应图的完整参数，可 Ctrl+Z 撤销")}</p>
           </section>
           <section>
             <header>
-              <h3>参数差异</h3>
+              <h3>{tr("参数差异")}</h3>
             </header>
             <table>
               <tbody>
@@ -223,11 +218,9 @@ export function CompareResults({
               </tbody>
             </table>
             {!parameters.length && (
-              <p className="hint">相同 Seed、步数与采样器</p>
+              <p className="hint">{tr("相同 Seed、步数与采样器")}</p>
             )}
-            <p className="hint">
-              采用版本将恢复完整提示词、视觉组、生成参数和模型设置。
-            </p>
+            <p className="hint">{tr("采用版本将恢复完整提示词、视觉组、生成参数和模型设置。")}</p>
           </section>
         </div>
       </div>

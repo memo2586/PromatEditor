@@ -1,3 +1,4 @@
+import { tr, trDiagnostic } from "./i18n";
 import { CollapsibleGroup, useTermPageMotion } from "./editor-motion";
 import { usePointerSort } from "./pointer-sort";
 import type { Workspace } from "./types";
@@ -107,30 +108,30 @@ export function GroupForm({
   };
   return (
     <Modal
-      title={group ? "修改视觉组" : "创建视觉组"}
+      title={group ? tr("修改视觉组") : tr("创建视觉组")}
       onClose={onClose}
       width={680}
       footer={
         <>
-          <span className="hint">{terms.length} 个有效成员</span>
+          <span className="hint">{terms.length}{" " + tr("个有效成员")}</span>
           <span className="spacer" />
-          <button onClick={onClose}>取消</button>
+          <button onClick={onClose}>{tr("取消")}</button>
           <button className="primary" onClick={save}>
-            {group ? "保存修改" : "创建视觉组"}
+            {group ? tr("保存修改") : tr("创建视觉组")}
           </button>
         </>
       }
     >
       <div className="group-form-fields">
-        <Field label="组名（可选）">
+        <Field label={tr("组名（可选）")}>
           <input
             autoFocus
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="为这组词条起一个名字"
+            placeholder={tr("为这组词条起一个名字")}
           />
         </Field>
-        <Field label="类别">
+        <Field label={tr("类别")}>
           <div className="category-grid">
             {categories.map((c) => (
               <button
@@ -143,14 +144,12 @@ export function GroupForm({
             ))}
           </div>
         </Field>
-        <Field label="输出预览 · 实时更新">
+        <Field label={tr("输出预览 · 实时更新")}>
           <pre className="output-preview">
-            {body || "请选择要归组的有效词条"}
+            {body || tr("请选择要归组的有效词条")}
           </pre>
         </Field>
-        <Notice>
-          组名和类别用于整理。修改组时保留成员与权重。
-        </Notice>
+        <Notice>{tr("组名和类别用于整理。修改组时保留成员与权重。")}</Notice>
       </div>
       {error && <Notice error>{error}</Notice>}
     </Modal>
@@ -174,13 +173,13 @@ export function FavoriteForm({
   const [error, setError] = useState("");
   return (
     <Modal
-      title={favorite ? "编辑收藏片段" : "收藏选中片段"}
+      title={favorite ? tr("编辑收藏片段") : tr("收藏选中片段")}
       width={680}
       onClose={onClose}
       footer={
         <>
           <span className="spacer" />
-          <button onClick={onClose}>取消</button>
+          <button onClick={onClose}>{tr("取消")}</button>
           <button
             className="primary"
             onClick={async () => {
@@ -205,20 +204,18 @@ export function FavoriteForm({
                 setError(String(e));
               }
             }}
-          >
-            保存收藏
-          </button>
+          >{tr("保存收藏")}</button>
         </>
       }
     >
-      <Field label="收藏名称">
+      <Field label={tr("收藏名称")}>
         <input
           autoFocus
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
       </Field>
-      <Field label="类别">
+      <Field label={tr("类别")}>
         <div className="category-grid">
           {categories.map((c) => (
             <button
@@ -231,7 +228,7 @@ export function FavoriteForm({
           ))}
         </div>
       </Field>
-      <Field label="提示词原文">
+      <Field label={tr("提示词原文")}>
         <textarea
           rows={7}
           readOnly={!!ids?.length}
@@ -240,7 +237,7 @@ export function FavoriteForm({
           onChange={(e) => setRaw(e.target.value)}
         />
       </Field>
-      <p className="hint">收藏片段与插入后的视觉组分别保存，互不影响。</p>
+      <p className="hint">{tr("收藏片段与插入后的视觉组分别保存，互不影响。")}</p>
       {error && <Notice error>{error}</Notice>}
     </Modal>
   );
@@ -272,13 +269,13 @@ function TermForm({ term, onClose }: { term: Term; onClose: () => void }) {
   }, [text]);
   return (
     <Modal
-      title={natural ? "编辑自然语言提示词" : "编辑词条"}
+      title={natural ? tr("编辑自然语言提示词") : tr("编辑词条")}
       onClose={onClose}
       width={640}
       footer={
         <>
           <span className="spacer" />
-          <button onClick={onClose}>取消</button>
+          <button onClick={onClose}>{tr("取消")}</button>
           <button
             ref={saveButton}
             className="primary"
@@ -292,7 +289,7 @@ function TermForm({ term, onClose }: { term: Term; onClose: () => void }) {
                 }
                 const n = Number(weight);
                 if (!weight.trim() || !Number.isFinite(n))
-                  throw Error("权重必须是有限十进制数");
+                  throw Error(tr("权重必须是有限十进制数"));
                 const raw =
                   term.Kind === "lora"
                     ? term.Raw.replace(/:[^:>]+>$/, `:${weight}>`)
@@ -310,13 +307,11 @@ function TermForm({ term, onClose }: { term: Term; onClose: () => void }) {
                 setError(String(e));
               }
             }}
-          >
-            保存词条
-          </button>
+          >{tr("保存词条")}</button>
         </>
       }
     >
-      <Field label="原文">
+      <Field label={tr("原文")}>
         <textarea
           ref={input}
           data-default-focus
@@ -348,7 +343,7 @@ function TermForm({ term, onClose }: { term: Term; onClose: () => void }) {
         />
         {completion.popup}
       </Field>
-      {!natural && <Field label="权重">
+      {!natural && <Field label={tr("权重")}>
         <input
           type="number"
           step="0.1"
@@ -358,7 +353,7 @@ function TermForm({ term, onClose }: { term: Term; onClose: () => void }) {
         />
       </Field>}
       {!natural && !term.Editable && (
-        <Notice>复杂或语义不明确的语法仅支持在原文区域编辑。</Notice>
+        <Notice>{tr("复杂或语义不明确的语法仅支持在原文区域编辑。")}</Notice>
       )}
       {error && <Notice error>{error}</Notice>}
     </Modal>
@@ -396,7 +391,7 @@ function InlineTermEditor({ initial, save, cancel }: {
   }, [text]);
   return <>
     <textarea
-      ref={input} rows={1} wrap="off" className="inline-term-input" aria-label="词条原文"
+      ref={input} rows={1} wrap="off" className="inline-term-input" aria-label={tr("词条原文")}
       value={text} spellCheck={false}
       onClick={(e) => e.stopPropagation()}
       onDoubleClick={(e) => e.stopPropagation()}
@@ -822,7 +817,7 @@ export function EditorPage() {
       const text = await app.act<string>("editor.copy");
       await navigator.clipboard.writeText(text);
       app.notify(
-        `已复制${negative ? "消极" : "积极"}提示词的全部 ${w.Active.length} 个有效项`,
+        tr("已复制{0}提示词的全部 {1} 个有效项", negative ? tr("消极") : tr("积极"), w.Active.length),
       );
     } catch (e) {
       app.reportError(String(e));
@@ -890,21 +885,21 @@ export function EditorPage() {
     setMenu({
       x: e.clientX, y: e.clientY, width: 220, className: "source-action-menu",
       items: at === undefined
-        ? [{ label: "创建自然语言提示词", action: () => bindNatural(start, end, true) }]
-        : [{ label: "取消自然语言绑定", action: () => unbindNatural(at) }],
+        ? [{ label: tr("创建自然语言提示词"), action: () => bindNatural(start, end, true) }]
+        : [{ label: tr("取消自然语言绑定"), action: () => unbindNatural(at) }],
     });
   };
   const symbolMenu = (e: MouseEvent<HTMLButtonElement>) => {
     const bounds = e.currentTarget.getBoundingClientRect();
     const clean = async (action: "commas" | "escape") => {
       const result = await safe("editor.symbols.clean", { action });
-      if (result) app.notify(result.changes ? `已整理 ${result.changes} 处符号 · Ctrl + Z 撤销` : "没有需要整理的符号");
+      if (result) app.notify(result.changes ? tr("已整理 {0} 处符号 · Ctrl + Z 撤销", result.changes) : tr("没有需要整理的符号"));
     };
     setMenu({
       x: bounds.right - 220, y: bounds.bottom + 4, width: 220, className: "source-action-menu",
       items: [
-        { label: "清理重复逗号", action: () => clean("commas") },
-        { label: "转义未配对的符号", action: () => clean("escape") },
+        { label: tr("清理重复逗号"), action: () => clean("commas") },
+        { label: tr("转义未配对的符号"), action: () => clean("escape") },
       ],
     });
   };
@@ -958,10 +953,10 @@ export function EditorPage() {
       setMenu({
         x: e.clientX, y: e.clientY, width: 220, className: "source-action-menu",
         items: [
-          ...(!hidden ? [{ label: "取消自然语言绑定", action: () => unbindNatural(t.Start) }] : []),
-          { label: hidden ? "恢复所选项" : "隐藏所选项", action: () =>
+          ...(!hidden ? [{ label: tr("取消自然语言绑定"), action: () => unbindNatural(t.Start) }] : []),
+          { label: hidden ? tr("恢复所选项") : tr("隐藏所选项"), action: () =>
             safe(hidden ? "editor.restore" : "editor.hide", { ids: target }) },
-          { label: "删除所选项", danger: true, action: () => safe("editor.delete", { ids: target }) },
+          { label: tr("删除所选项"), danger: true, action: () => safe("editor.delete", { ids: target }) },
         ],
       });
       return;
@@ -973,20 +968,20 @@ export function EditorPage() {
       x: e.clientX,
       y: e.clientY,
       items: [
-        ...(!hidden ? [{ label: "创建自然语言提示词", disabled: !range, action: () => {
+        ...(!hidden ? [{ label: tr("创建自然语言提示词"), disabled: !range, action: () => {
           if (range) void bindNatural(range.start, range.end, false, wholeTerms ? target : undefined);
         } }] : []),
         {
-          label: "试试该词条的效果…",
+          label: tr("试试该词条的效果…"),
           disabled: hidden,
           action: () => openProbe(t.Id,"weight",app.data.project.State.IsNegative),
         },
         {
-          label: "编辑词条…",
+          label: tr("编辑词条…"),
           action: () => editTerm(t),
         },
         {
-          label: "定位原文",
+          label: tr("定位原文"),
           disabled: hidden,
           action: () => {
             setSelected([t.Id]);
@@ -994,28 +989,28 @@ export function EditorPage() {
           },
         },
         {
-          label: hidden ? "恢复所选项" : "隐藏所选项",
+          label: hidden ? tr("恢复所选项") : tr("隐藏所选项"),
           action: () =>
             safe(hidden ? "editor.restore" : "editor.hide", { ids: target }),
         },
         {
-          label: "取消权重",
+          label: tr("取消权重"),
           disabled: hidden || !t.Editable,
           action: () => safe("editor.weight", { ids: target.filter((id) => weightIds.includes(id) || id === t.Id), value: null }),
         },
         {
-          label: "创建视觉组…",
+          label: tr("创建视觉组…"),
           disabled: hidden || w.Active.some((term) => term.Kind === "natural" && target.includes(term.Id)),
           action: () => groupForm(undefined, target),
         },
         {
-          label: "移出视觉组",
+          label: tr("移出视觉组"),
           disabled: hidden,
           action: () => safe("editor.detach", { ids: target }),
         },
         { separator: true, label: "" },
         {
-          label: "删除所选项",
+          label: tr("删除所选项"),
           danger: true,
           action: () => safe("editor.delete", { ids: target }),
         },
@@ -1033,51 +1028,49 @@ export function EditorPage() {
       x: e.clientX,
       y: e.clientY,
       items: [
-        { label: "添加提示词", shortcut: "I", disabled: hidden || !app.data.valid || !active.length,
+        { label: tr("添加提示词"), shortcut: "I", disabled: hidden || !app.data.valid || !active.length,
           action: () => beginGroupTerm(g) },
         {
-          label: collapsed.includes(g.Id) ? "展开组" : "收起组",
+          label: collapsed.includes(g.Id) ? tr("展开组") : tr("收起组"),
           action: () => toggleGroup(g),
         },
         {
-          label: "选择整组有效项",
+          label: tr("选择整组有效项"),
           disabled: !active.length,
           action: () => setSelected([...active, `group:${g.Id}`]),
         },
-        { label: "修改组名 / 类别…", action: () => groupForm(g) },
+        { label: tr("修改组名 / 类别…"), action: () => groupForm(g) },
         ...(!hidden ? [{
-          label: "创建自然语言提示词", disabled: !range,
+          label: tr("创建自然语言提示词"), disabled: !range,
           action: () => { if (range) void bindNatural(range.start, range.end, false, active); },
         }] : []),
         {
-          label: "隐藏整组有效项",
+          label: tr("隐藏整组有效项"),
           disabled: !active.length,
           action: () => safe("editor.hide", { ids: active }),
         },
         {
-          label: "恢复隐藏成员",
+          label: tr("恢复隐藏成员"),
           disabled: !inactive.length,
           action: () => safe("editor.restore", { ids: inactive }),
         },
         { separator: true, label: "" },
         {
-          label: "解散组（保留词条）",
+          label: tr("解散组（保留词条）"),
           action: () => safe("editor.group.dissolve", { id: g.Id }),
         },
         {
-          label: "删除整组（含隐藏成员）",
+          label: tr("删除整组（含隐藏成员）"),
           danger: true,
           action: async () => {
             if (
               (await app.confirm({
-                title: "删除整个视觉组？",
+                title: tr("删除整个视觉组？"),
                 body: (
                   <p>
-                    “{g.Name || g.Category}”的 {g.Members.length}{" "}
-                    个成员（含隐藏项）将被删除，可通过撤销恢复。
-                  </p>
+                    “{g.Name || g.Category}{tr("”的") + " "}{g.Members.length}{" "}{tr("个成员（含隐藏项）将被删除，可通过撤销恢复。")}</p>
                 ),
-                confirm: "删除整组",
+                confirm: tr("删除整组"),
                 danger: true,
               })) === "confirm"
             )
@@ -1258,7 +1251,7 @@ export function EditorPage() {
         draggable={false}
         data-drag-ids={JSON.stringify(selected.includes(t.Id) ? activeSelected.map(x => x.Id) : [t.Id])}
         title={
-          dragAllowed ? "拖动词条排序" : "筛选、隐藏视图或语法无效时不能拖动"
+          dragAllowed ? tr("拖动词条排序") : tr("筛选、隐藏视图或语法无效时不能拖动")
         }
         onDragStart={(e) => {
           if (!dragAllowed) {
@@ -1276,7 +1269,7 @@ export function EditorPage() {
         <DotsSixVertical size={16} />
       </span>
       <span className="term-text mono" title={t.Raw}>
-        {t.Kind === "natural" && <span className="natural-term-label">自然语言</span>}
+        {t.Kind === "natural" && <span className="natural-term-label">{tr("自然语言")}</span>}
         {inlineEdit && "term" in inlineEdit && inlineEdit.term === t.Id
           ? <InlineTermEditor initial={t.Base} cancel={() => setInlineEdit(null)} save={async (text) => {
               if (await safe("editor.term.edit", { id: t.Id, text }))
@@ -1299,7 +1292,7 @@ export function EditorPage() {
       <div className="row-actions">
         <IconButton
           icon={hidden ? Eye : EyeSlash}
-          label={hidden ? `恢复词条：${t.Base}` : `隐藏词条：${t.Base}`}
+          label={hidden ? tr("恢复词条：{0}", t.Base) : tr("隐藏词条：{0}", t.Base)}
           className="row-hide"
           onClick={(e) => {
             e.stopPropagation();
@@ -1310,7 +1303,7 @@ export function EditorPage() {
         />
         <IconButton
           icon={DotsThree}
-          label={`词条操作：${t.Base}`}
+          label={tr("词条操作：{0}", t.Base)}
           className="row-menu"
           onClick={(e) => {
             e.stopPropagation();
@@ -1429,7 +1422,7 @@ export function EditorPage() {
             >
               <button
                 className="group-collapse"
-                aria-label={`${collapsedNow ? "展开" : "收起"}组：${g.Name || g.Category}`}
+                aria-label={tr("{0}组：{1}", collapsedNow ? tr("展开") : tr("收起"), g.Name || g.Category)}
                 aria-expanded={!collapsedNow}
                 onClick={() => void toggleGroup(g)}
               >
@@ -1439,7 +1432,7 @@ export function EditorPage() {
                 className="term-handle"
                 draggable={false}
                 data-drag-group={g.Id}
-                title="拖动整个组块"
+                title={tr("拖动整个组块")}
                 onDragStart={(e) => {
                   e.dataTransfer.setData("application/prompt-group", g.Id);
                   setDragging(true);
@@ -1455,15 +1448,14 @@ export function EditorPage() {
               <span className="group-category">{g.Category}</span>
               <span className="group-spacer" />
               <span className="group-count">
-                {hidden ? members.length : total} 项
-              </span>
+                {hidden ? members.length : total}{" " + tr("项")}</span>
               <div className="row-actions">
                 <IconButton
                   icon={hidden ? Eye : EyeSlash}
                   label={
                     hidden
-                      ? `恢复整组：${g.Name || g.Category}`
-                      : `隐藏整组：${g.Name || g.Category}`
+                      ? tr("恢复整组：{0}", g.Name || g.Category)
+                      : tr("隐藏整组：{0}", g.Name || g.Category)
                   }
                   className="row-hide"
                   onClick={(e) => {
@@ -1480,7 +1472,7 @@ export function EditorPage() {
                 />
                 <IconButton
                   icon={DotsThree}
-                  label={`组操作：${g.Name || g.Category}`}
+                  label={tr("组操作：{0}", g.Name || g.Category)}
                   className="row-menu"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -1552,11 +1544,11 @@ export function EditorPage() {
       }}
     >
       <div className="page-heading">
-        <h1>{negative ? "消极提示词" : "积极提示词"}</h1>
+        <h1>{negative ? tr("消极提示词") : tr("积极提示词")}</h1>
         <div className="page-actions">
           <IconButton
             icon={FloppyDisk}
-            label="保存提示词卡 · Ctrl+S"
+            label={tr("保存提示词卡 · Ctrl+S")}
             className="motion-press"
             onClick={() =>
               void app.save().catch((e) => {
@@ -1566,19 +1558,19 @@ export function EditorPage() {
           />
           <IconButton
             icon={ArrowUUpLeft}
-            label="撤销 · Ctrl+Z"
+            label={tr("撤销 · Ctrl+Z")}
             disabled={!app.data.canUndo}
             onClick={() => void safe("editor.undo")}
           />
           <IconButton
             icon={ArrowUUpRight}
-            label="重做 · Ctrl+Y"
+            label={tr("重做 · Ctrl+Y")}
             disabled={!app.data.canRedo}
             onClick={() => void safe("editor.redo")}
           />
           <IconButton
             icon={PushPin}
-            label={app.data.settings.Topmost ? "取消窗口置顶" : "窗口置顶"}
+            label={app.data.settings.Topmost ? tr("取消窗口置顶") : tr("窗口置顶")}
             active={app.data.settings.Topmost}
             onClick={async () => {
               const value = !app.data.settings.Topmost;
@@ -1590,7 +1582,7 @@ export function EditorPage() {
           />
           <IconButton
             icon={app.data.settings.Compact ? ArrowsOut : ArrowsIn}
-            label={app.data.settings.Compact ? "展开编辑器" : "紧凑模式"}
+            label={app.data.settings.Compact ? tr("展开编辑器") : tr("紧凑模式")}
             active={app.data.settings.Compact}
             onClick={async () => {
               const value = !app.data.settings.Compact;
@@ -1601,31 +1593,31 @@ export function EditorPage() {
           />
           <IconButton
             icon={MagnifyingGlass}
-            label="打开查词与收藏面板"
+            label={tr("打开查词与收藏面板")}
             active={lookup}
             onClick={() => setLookup(!lookup)}
           />
           <IconButton
             icon={DotsThree}
-            label="更多工作台操作"
+            label={tr("更多工作台操作")}
             onClick={(e) =>
               setMenu({
                 x: e.currentTarget.getBoundingClientRect().right - 230,
                 y: 146,
                 items: [
                   {
-                    label: "新建项目",
+                    label: tr("新建项目"),
                     shortcut: "Ctrl+N",
                     action: app.newProject,
                   },
                   {
-                    label: "打开项目…",
+                    label: tr("打开项目…"),
                     shortcut: "Ctrl+O",
                     action: app.openProject,
                   },
-                  { label: "从图片导入…", action: app.importImage },
+                  { label: tr("从图片导入…"), action: app.importImage },
                   {
-                    label: "另存为提示词卡…",
+                    label: tr("另存为提示词卡…"),
                     action: () =>
                       app.save(true).catch((e) => {
                         if (e.name !== "AbortError") app.reportError(String(e));
@@ -1633,21 +1625,21 @@ export function EditorPage() {
                   },
                   { separator: true, label: "" },
                   {
-                    label: "收藏全文…",
+                    label: tr("收藏全文…"),
                     disabled: !w.Active.length,
                     action: () => favoriteForm(true),
                   },
                   {
-                    label: "预览复制输出",
+                    label: tr("预览复制输出"),
                     action: async () =>
                       setPreview(await app.act("editor.copy")),
                   },
                   {
-                    label: "全部展开视觉组",
+                    label: tr("全部展开视觉组"),
                     action: () => setCollapsedGroups([]),
                   },
                   {
-                    label: "全部收起视觉组",
+                    label: tr("全部收起视觉组"),
                     action: () => setCollapsedGroups(w.Groups.map((g) => g.Id)),
                   },
                 ],
@@ -1656,7 +1648,7 @@ export function EditorPage() {
           />
           <IconButton
             icon={Copy}
-            label={`复制${negative ? "消极" : "积极"}的全部 ${w.Active.length} 个有效项 · Ctrl+Shift+C`}
+            label={tr("复制{0}的全部 {1} 个有效项 · Ctrl+Shift+C", negative ? tr("消极") : tr("积极"), w.Active.length)}
             className="primary"
             disabled={!app.data.valid || !w.Active.length}
             onClick={copy}
@@ -1664,12 +1656,10 @@ export function EditorPage() {
           <GenerateButton />
         </div>
         <p>
-          {w.Active.length} 个有效项　·　{w.Groups.length} 个视觉组　·　
-          {w.Hidden.length} 项已隐藏
-        </p>
+          {w.Active.length}{" " + tr("个有效项　·")}{w.Groups.length}{" " + tr("个视觉组　·")}{w.Hidden.length}{" " + tr("项已隐藏")}</p>
         <span className="page-status">
-          {app.data.sessionRestoreError ? "工作区原文件已保护" : "工作区已自动保存"}
-          {app.data.dirty && " · 提示词卡有未保存修改"}
+          {app.data.sessionRestoreError ? tr("工作区原文件已保护") : tr("工作区已自动保存")}
+          {app.data.dirty && tr(" · 提示词卡有未保存修改")}
         </span>
       </div>
       <div
@@ -1690,7 +1680,7 @@ export function EditorPage() {
             className="pane-splitter"
             role="separator"
             tabIndex={0}
-            aria-label="调整原文与词条区域大小"
+            aria-label={tr("调整原文与词条区域大小")}
             onDoubleClick={() => setSplit({})}
             onPointerDown={(e) => {
               splitDrag.current = true;
@@ -1739,8 +1729,8 @@ export function EditorPage() {
             }}
           />
           <Panel
-            title="原文编辑"
-            actions={<button type="button" className="source-symbols" aria-haspopup="menu" onClick={symbolMenu}>符号整理 <CaretDown size={12} /></button>}
+            title={tr("原文编辑")}
+            actions={<button type="button" className="source-symbols" aria-haspopup="menu" onClick={symbolMenu}>{tr("符号整理") + " "}<CaretDown size={12} /></button>}
             className="source-panel"
           >
             <div className="source-editor" ref={sourceScroll}>
@@ -1794,7 +1784,7 @@ export function EditorPage() {
               </div>
               <textarea
                 ref={source}
-                aria-label={`${negative ? "消极" : "积极"}提示词原文`}
+                aria-label={tr("{0}提示词原文", negative ? tr("消极") : tr("积极"))}
                 value={draft}
                 spellCheck={false}
                 wrap="soft"
@@ -1891,15 +1881,14 @@ export function EditorPage() {
             </div>
             {!app.data.valid && (
               <div className="syntax-error" role="alert">
-                {app.data.error} · 结构化操作暂不可用
-              </div>
+                {trDiagnostic(app.data.error || "")}{" " + tr("· 结构化操作暂不可用")}</div>
             )}
-            <p className="source-help">Tab 补全 · Ctrl + ↑ / ↓ 调整权重</p>
+            <p className="source-help">{tr("Tab 补全 · Ctrl + ↑ / ↓ 调整权重")}</p>
             <div className="output-toolbar">
-              <span>复制输出</span>
+              <span>{tr("复制输出")}</span>
               <IconButton
                 icon={Eye}
-                label="预览复制输出"
+                label={tr("预览复制输出")}
                 disabled={!app.data.valid}
                 onClick={async () => {
                   try {
@@ -1914,7 +1903,7 @@ export function EditorPage() {
           <div
             className="source-height-splitter"
             role="separator"
-            aria-label="调整原文与隐藏文本框高度"
+            aria-label={tr("调整原文与隐藏文本框高度")}
             aria-orientation="horizontal"
             aria-valuemin={20}
             aria-valuemax={80}
@@ -1947,19 +1936,19 @@ export function EditorPage() {
             }}
           />
           <Panel
-            title={`已隐藏 · ${w.Hidden.length}`}
-            actions={<span className="hint">只读 · 不参与输出</span>}
+            title={tr("已隐藏 · {0}", w.Hidden.length)}
+            actions={<span className="hint">{tr("只读 · 不参与输出")}</span>}
             className="hidden-source"
           >
-            <pre>{w.Hidden.map(display).join(", ") || "暂无隐藏项"}</pre>
+            <pre>{w.Hidden.map(display).join(", ") || tr("暂无隐藏项")}</pre>
           </Panel>
         </div>
         <div className="terms-column">
           <section className="terms-panel">
             <header className="terms-heading">
-              <span>结构化词条</span>
+              <span>{tr("结构化词条")}</span>
               <Segments
-                label="有效或隐藏词条"
+                label={tr("有效或隐藏词条")}
                 value={hidden ? "hidden" : "active"}
                 onChange={(v) => {
                   if ((v === "hidden") !== hidden) captureTermPage();
@@ -1967,20 +1956,20 @@ export function EditorPage() {
                   setSelected([]);
                 }}
                 items={[
-                  { label: `有效 ${w.Active.length}`, value: "active" },
-                  { label: `隐藏 ${w.Hidden.length}`, value: "hidden" },
+                  { label: tr("有效 {0}", w.Active.length), value: "active" },
+                  { label: tr("隐藏 {0}", w.Hidden.length), value: "hidden" },
                 ]}
               />
               <span className="spacer" />
               <IconButton
                 icon={Plus}
-                label="创建视觉组"
+                label={tr("创建视觉组")}
                 disabled={!activeSelected.length || hasNaturalSelection || !app.data.valid || hidden}
                 onClick={() => groupForm()}
               />
               <IconButton
                 icon={Star}
-                label="收藏选中有效项"
+                label={tr("收藏选中有效项")}
                 disabled={!activeSelected.length || hidden || !app.data.valid}
                 onClick={() => favoriteForm()}
               />
@@ -1989,13 +1978,14 @@ export function EditorPage() {
               <div className="search-input">
                 <MagnifyingGlass size={16} />
                 <input
-                  aria-label="搜索当前条目、原文或译文"
-                  placeholder="搜索当前条目、原文或译文"
+                  aria-label={tr("搜索当前条目、原文或译文")}
+                  data-workspace-search
+                  placeholder={tr("搜索当前条目、原文或译文")}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                 />
                 {query && (
-                  <button aria-label="清空搜索" onClick={() => setQuery("")}>
+                  <button aria-label={tr("清空搜索")} onClick={() => setQuery("")}>
                     <X size={12} />
                   </button>
                 )}
@@ -2003,18 +1993,18 @@ export function EditorPage() {
               <Segments
                 value={filter}
                 onChange={setFilter}
-                label="词条类型筛选"
+                label={tr("词条类型筛选")}
                 items={[
-                  { value: "all", label: "全部" },
+                  { value: "all", label: tr("全部") },
                   { value: "lora", label: "LoRA" },
-                  { value: "weighted", label: "带权重" },
-                  { value: "unmatched", label: "未匹配" },
+                  { value: "weighted", label: tr("带权重") },
+                  { value: "unmatched", label: tr("未匹配") },
                 ]}
               />
               <button
                 className="duplicates-button"
                 disabled={!duplicateKeys.length}
-                title="定位下一个重复项；Shift 单击定位上一个"
+                title={tr("定位下一个重复项；Shift 单击定位上一个")}
                 onClick={(e) => {
                   const all = duplicateKeys.flat();
                   const at = all.findIndex((t) => selected.includes(t.Id));
@@ -2029,15 +2019,15 @@ export function EditorPage() {
                 }}
               >
                 {duplicateKeys.length
-                  ? `${duplicateKeys.length} 组重复项`
-                  : "无重复项"}
+                  ? tr("{0} 组重复项", duplicateKeys.length)
+                  : tr("无重复项")}
               </button>
             </div>
             <div
               ref={termListRef}
               className={`term-list ${dragging ? "dragging" : ""}`}
               role="grid"
-              aria-label="结构化词条列表"
+              aria-label={tr("结构化词条列表")}
               tabIndex={0}
               onKeyDown={(e) => {
                 if (
@@ -2072,29 +2062,29 @@ export function EditorPage() {
                 <Empty
                   title={
                     hidden
-                      ? "暂无隐藏项"
+                      ? tr("暂无隐藏项")
                       : query || filter !== "all"
-                        ? "没有匹配的词条"
-                        : "从原文开始编辑"
+                        ? tr("没有匹配的词条")
+                        : tr("从原文开始编辑")
                   }
                   description={
                     hidden
-                      ? "隐藏的词条会保留原身份和分组，恢复后重新参与输出。"
+                      ? tr("隐藏的词条会保留原身份和分组，恢复后重新参与输出。")
                       : query || filter !== "all"
-                        ? "尝试其他关键词或清除筛选。"
-                        : "在左侧输入提示词，结构化词条会自动显示在这里。"
+                        ? tr("尝试其他关键词或清除筛选。")
+                        : tr("在左侧输入提示词，结构化词条会自动显示在这里。")
                   }
                 />
               )}
             </div>
           </section>
           <div className="selection-toolbar">
-            <strong>已选 {selectedTerms.length} 项</strong>
+            <strong>{tr("已选") + " "}{selectedTerms.length}{" " + tr("项")}</strong>
             <span className="selection-divider" />
-            <span className="weight-label">权重</span>
+            <span className="weight-label">{tr("权重")}</span>
             <IconButton
               icon={Minus}
-              label="按当前步长减少选中权重"
+              label={tr("按当前步长减少选中权重")}
               disabled={!weightIds.length || !app.data.valid}
               onClick={() =>
                 void safe("editor.weight", {
@@ -2106,7 +2096,7 @@ export function EditorPage() {
             />
             <input
               className="batch-weight mono"
-              aria-label="选中项明确权重"
+              aria-label={tr("选中项明确权重")}
               value={batchWeight}
               disabled={hidden || hasNaturalSelection && !weightIds.length}
               onChange={(e) => setBatchWeight(e.target.value)}
@@ -2131,7 +2121,7 @@ export function EditorPage() {
             />
             <IconButton
               icon={Plus}
-              label="按当前步长增加选中权重"
+              label={tr("按当前步长增加选中权重")}
               disabled={!weightIds.length || !app.data.valid}
               onClick={() =>
                 void safe("editor.weight", {
@@ -2144,7 +2134,7 @@ export function EditorPage() {
             <span className="spacer" />
             <IconButton
               icon={ArrowCounterClockwise}
-              label={hidden ? "恢复选中隐藏项" : "取消所选项权重"}
+              label={hidden ? tr("恢复选中隐藏项") : tr("取消所选项权重")}
               disabled={!(hidden ? selectedIds : weightIds).length || !app.data.valid}
               onClick={() =>
                 void safe(hidden ? "editor.restore" : "editor.weight", {
@@ -2155,37 +2145,37 @@ export function EditorPage() {
             />
             <IconButton
               icon={EyeSlash}
-              label="隐藏选中有效项"
+              label={tr("隐藏选中有效项")}
               disabled={!selectedTerms.length || hidden || !app.data.valid}
               onClick={() => void safe("editor.hide", { ids: selectedIds })}
             />
             <IconButton
               icon={ArrowSquareOut}
-              label="移出组成为散项"
+              label={tr("移出组成为散项")}
               disabled={!selectedTerms.length || hidden || !app.data.valid}
               onClick={() => void safe("editor.detach", { ids: selectedIds })}
             />
             <IconButton
               icon={Crosshair}
-              label="定位原文"
+              label={tr("定位原文")}
               disabled={!activeSelected.length || hidden}
               onClick={() => locateTerm()}
             />
             <IconButton
               icon={Star}
-              label="收藏选中片段"
+              label={tr("收藏选中片段")}
               disabled={!activeSelected.length || hidden || !app.data.valid}
               onClick={() => favoriteForm()}
             />
             <IconButton
               icon={Trash}
-              label="删除选中项"
+              label={tr("删除选中项")}
               disabled={!selectedTerms.length || !app.data.valid}
               onClick={() => void safe("editor.delete", { ids: selectedIds })}
             />
             <IconButton
               icon={X}
-              label="清除选择"
+              label={tr("清除选择")}
               disabled={!selected.length}
               onClick={() => setSelected([])}
             />
@@ -2193,27 +2183,30 @@ export function EditorPage() {
         </div>
         {lookup && (
           <Panel
-            title="查词与收藏"
+            title={tr("查词与收藏")}
             className="lookup-panel"
             actions={
               <IconButton
                 icon={X}
-                label="关闭查词面板"
+                label={tr("关闭查词面板")}
                 onClick={() => setLookup(false)}
               />
             }
           >
-            <div className="lookup-tabs"><Segments label="查词面板内容" value={lookupTab} onChange={setLookupTab} items={[{value:'lexicon',label:'词库'},{value:'favorites',label:'收藏'}]}/></div>
+            <div className="lookup-tabs"><Segments label={tr("查词面板内容")} value={lookupTab} onChange={setLookupTab} items={[{value:'lexicon',label:tr("词库")},{value:'favorites',label:tr("收藏")}]}/></div>
             <div className="lookup-search">
               <input
-                aria-label="中英文查词"
+                aria-label={tr("中英文查词")}
                 autoFocus
-                placeholder="输入英文或中文查词…"
+                data-workspace-search
+                placeholder={tr("输入英文或中文查词…")}
                 value={lookupQuery}
                 onChange={(e) => setLookupQuery(e.target.value)}
               />
             </div>
-            <p className="lookup-result-count">{negative?'消极':'积极'}词库 · {lookupItems.length} 个结果</p>
+            <p className="lookup-result-count">
+              {tr("{0}词库 · {1} 个结果", tr(negative ? "消极" : "积极"), lookupItems.length)}
+            </p>
             <div className="lookup-results" hidden={lookupTab!=='lexicon'}>
               {lookupItems.map((l, i) => (
                 <div
@@ -2239,7 +2232,7 @@ export function EditorPage() {
                   </small>
                   <IconButton
                     icon={Plus}
-                    label={`插入 ${l.Text}`}
+                    label={tr("插入 {0}", l.Text)}
                     onClick={(e) => {
                       e.stopPropagation();
                       void safe("editor.insert", {
@@ -2249,7 +2242,7 @@ export function EditorPage() {
                   />
                 </div>
               ))}
-              {!lookupItems.length && <Empty title="输入关键词查找词条" />}
+              {!lookupItems.length && <Empty title={tr("输入关键词查找词条")} />}
             </div>
             <div className="lookup-favorites" hidden={lookupTab!=='favorites'}>
               {app.data.favorites.filter(f=>`${f.Name} ${f.Text}`.toLowerCase().includes(lookupQuery.toLowerCase())).map((f) => (
@@ -2264,7 +2257,18 @@ export function EditorPage() {
                 </button>
               ))}
             </div>
-            {lookupTab==='lexicon'&&<footer className="lookup-insert"><span>插入到{negative?'消极':'积极'}提示词选中位置，无选中时追加到尾部</span><IconButton icon={ArrowSquareOut} label="插入选中查词结果" className="primary" disabled={!lookupItems[lookupSelected]} onClick={()=>void safe('editor.insert',{text:lookupItems[lookupSelected].Text})}/></footer>}
+            {lookupTab === "lexicon" && (
+              <footer className="lookup-insert">
+                <span>{tr("插入到{0}提示词选中位置，无选中时追加到尾部", tr(negative ? "消极" : "积极"))}</span>
+                <IconButton
+                  icon={ArrowSquareOut}
+                  label={tr("插入选中查词结果")}
+                  className="primary"
+                  disabled={!lookupItems[lookupSelected]}
+                  onClick={() => void safe("editor.insert", { text: lookupItems[lookupSelected].Text })}
+                />
+              </footer>
+            )}
           </Panel>
         )}
       </div>
@@ -2272,29 +2276,27 @@ export function EditorPage() {
       {completion.popup}
       {preview !== null && (
         <Modal
-          title="复制输出预览"
+          title={tr("复制输出预览")}
           width={800}
           onClose={() => setPreview(null)}
           footer={
             <>
-              <span className="hint">输出全部有效项，隐藏项不参与输出。自然语言提示词保留独立一行。</span>
+              <span className="hint">{tr("输出全部有效项，隐藏项不参与输出。自然语言提示词保留独立一行。")}</span>
               <span className="spacer" />
-              <button onClick={() => setPreview(null)}>关闭</button>
+              <button onClick={() => setPreview(null)}>{tr("关闭")}</button>
               <button
                 className="primary"
                 onClick={async () => {
                   await navigator.clipboard.writeText(preview);
-                  app.notify("已复制完整输出");
+                  app.notify(tr("已复制完整输出"));
                 }}
               >
-                <Copy size={16} />
-                复制全部
-              </button>
+                <Copy size={16} />{tr("复制全部")}</button>
             </>
           }
         >
           <pre className="output-preview large">
-            {preview || "暂无有效输出"}
+            {preview || tr("暂无有效输出")}
           </pre>
         </Modal>
       )}

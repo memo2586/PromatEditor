@@ -1,3 +1,4 @@
+import { getLocale, tr } from "./i18n";
 import {
   useEffect,
   useLayoutEffect,
@@ -188,10 +189,10 @@ export function GenerationHistoryPage() {
         e.run.project_path
           ?.split(/[\\/]/)
           .pop()
-          ?.replace(/\.prompt-card\.png$/i, "") || "未命名会话";
+          ?.replace(/\.prompt-card\.png$/i, "") || tr("未命名会话");
       group = {
         key,
-        title: `${d.toDateString() === today.toDateString() ? "今天" : d.toLocaleDateString()} · ${name}`,
+        title: `${d.toDateString() === today.toDateString() ? tr("今天") : d.toLocaleDateString(getLocale())} · ${name}`,
         items: [],
       };
       out.push(group);
@@ -215,32 +216,32 @@ export function GenerationHistoryPage() {
   return (
     <div className="generation-history">
       <header className="page-header">
-        <h1>生成记录</h1>
+        <h1>{tr("生成记录")}</h1>
         <span className="spacer" />
         <button
           className="history-sort"
-          aria-label="生成记录排序"
+          aria-label={tr("生成记录排序")}
           onClick={() => {
             setNewest((v) => !v);
             reset();
           }}
         >
-          {newest ? "最新优先" : "最早优先"}
+          {newest ? tr("最新优先") : tr("最早优先")}
         </button>
         <IconButton
           icon={Funnel}
-          label="筛选生成记录"
+          label={tr("筛选生成记录")}
           onClick={() =>
             document
               .querySelector<HTMLSelectElement>(
-                '.page-host:not([hidden]) [aria-label="筛选生成记录"]',
+                '.page-host:not([hidden]) [data-run-filter]',
               )
               ?.focus()
           }
         />
         <IconButton
           icon={ArrowsLeftRight}
-          label="对比所选两张结果"
+          label={tr("对比所选两张结果")}
           disabled={
             chosen.length !== 2 || chosen.some((x) => !x.run.outputs.length)
           }
@@ -248,7 +249,7 @@ export function GenerationHistoryPage() {
         />
         <IconButton
           icon={FolderOpen}
-          label="打开结果所在目录"
+          label={tr("打开结果所在目录")}
           disabled={!focus?.run.outputs.length}
           onClick={() => {
             if (focus)
@@ -257,7 +258,7 @@ export function GenerationHistoryPage() {
         />
         <IconButton
           icon={Flask}
-          label="配置效果探针"
+          label={tr("配置效果探针")}
           onClick={() => app.open("probe")}
         />
         <GenerateButton />
@@ -267,8 +268,9 @@ export function GenerationHistoryPage() {
           <div className="history-toolbar">
             <MagnifyingGlass size={16} />
             <input
-              aria-label="搜索生成记录"
-              placeholder="搜索提示词、Seed 或工作流"
+              aria-label={tr("搜索生成记录")}
+              data-workspace-search
+              placeholder={tr("搜索提示词、Seed 或工作流")}
               value={query}
               onChange={(e) => {
                 setQuery(e.target.value);
@@ -276,7 +278,8 @@ export function GenerationHistoryPage() {
               }}
             />
             <select
-              aria-label="筛选生成记录"
+              aria-label={tr("筛选生成记录")}
+              data-run-filter
               value={filter}
               onChange={(e) => {
                 setFilter(e.target.value);
@@ -284,13 +287,13 @@ export function GenerationHistoryPage() {
               }}
             >
               {[
-                ["all", "全部结果"],
-                ["completed", "已完成"],
-                ["running", "生成中"],
-                ["queued", "排队中"],
-                ["failed", "失败"],
-                ["cancelled", "已取消"],
-                ["unknown", "受理待核对"],
+                ["all", tr("全部结果")],
+                ["completed", tr("已完成")],
+                ["running", tr("生成中")],
+                ["queued", tr("排队中")],
+                ["failed", tr("失败")],
+                ["cancelled", tr("已取消")],
+                ["unknown", tr("受理待核对")],
               ].map(([v, t]) => (
                 <option key={v} value={v}>
                   {t}
@@ -298,7 +301,7 @@ export function GenerationHistoryPage() {
               ))}
             </select>
             <SearchableSelect
-              label="生成记录范围"
+              label={tr("生成记录范围")}
               value={scope}
               onChange={(value) => {
                 setScope(value);
@@ -306,47 +309,46 @@ export function GenerationHistoryPage() {
                 reset();
               }}
               options={[
-                { value: "all", label: "全部项目" },
-                { value: "project", label: "当前项目" },
+                { value: "all", label: tr("全部项目") },
+                { value: "project", label: tr("当前项目") },
                 ...projects.map(([key, run]) => ({
                   value: key,
-                  label: `${run.project_path?.split(/[\\/]/).pop() || "未保存项目"} · ${(run.snapshot.project_id || run.session_id || "旧记录").slice(0, 8)}`,
+                  label: `${run.project_path?.split(/[\\/]/).pop() || tr("未保存项目")} · ${(run.snapshot.project_id || run.session_id || tr("旧记录")).slice(0, 8)}`,
                   search: `${run.project_path || ""} ${key}`,
                 })),
               ]}
             />
             <SearchableSelect
-              label="按会话筛选生成记录"
+              label={tr("按会话筛选生成记录")}
               value={session}
               onChange={(value) => {
                 setSession(value);
                 reset();
               }}
               options={[
-                { value: "all", label: "全部会话" },
-                { value: "current", label: "当前会话" },
+                { value: "all", label: tr("全部会话") },
+                { value: "current", label: tr("当前会话") },
                 ...sessions.map(([key, run]) => ({
                   value: key,
-                  label: `${new Date(run.created).toLocaleString()} · ${key.slice(0, 8)}`,
+                  label: `${new Date(run.created).toLocaleString(getLocale())} · ${key.slice(0, 8)}`,
                   search: key,
                 })),
               ]}
             />
-            <span className="history-zoom" title="Ctrl + 滚轮调整图像大小">
-              图像 {size} px
+            <span className="history-zoom" title={tr("Ctrl + 滚轮调整图像大小")}>{tr("图像") + " "}{size} px
             </span>
           </div>
           <div
             className="history-grid"
             ref={grid}
             style={{ "--history-image-size": `${size}px` } as CSSProperties}
-            title="Ctrl + 滚轮调整网格图像大小"
+            title={tr("Ctrl + 滚轮调整网格图像大小")}
           >
             {groups.map((g) => (
               <section className="history-session" key={g.key}>
                 <header>
                   <h3>{g.title}</h3>
-                  <small>按会话分组 · 胶片条隐藏仍保留历史与原图</small>
+                  <small>{tr("按会话分组 · 胶片条隐藏仍保留历史与原图")}</small>
                 </header>
                 <div className="history-session-grid">
                   {g.items.map((x) => (
@@ -378,7 +380,7 @@ export function GenerationHistoryPage() {
                           <ResultImage run={x.run} index={x.index} />
                         ) : (
                           <span className="result-placeholder">
-                            {labels[x.run.status] || x.run.status}
+                            {tr(labels[x.run.status] || "") || x.run.status}
                           </span>
                         )}
                       </div>
@@ -387,8 +389,8 @@ export function GenerationHistoryPage() {
                       </span>
                       <DiffBadges run={x.run} limit={3} />
                       <small className="history-state">
-                        {labels[x.run.status]}
-                        {x.run.film_hidden ? " · 已从胶片条隐藏" : ""}
+                        {tr(labels[x.run.status] || "")}
+                        {x.run.film_hidden ? tr(" · 已从胶片条隐藏") : ""}
                       </small>
                     </button>
                   ))}
@@ -396,22 +398,18 @@ export function GenerationHistoryPage() {
               </section>
             ))}
             {!entries.length && (
-              <p className="history-empty">没有匹配的生成记录</p>
+              <p className="history-empty">{tr("没有匹配的生成记录")}</p>
             )}
           </div>
           <div className="history-pagination" hidden={entries.length <= 48}>
-            <button disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
-              上一页
-            </button>
+            <button disabled={page === 0} onClick={() => setPage((p) => p - 1)}>{tr("上一页")}</button>
             <span>
               {page + 1} / {Math.max(1, Math.ceil(entries.length / 48))}
             </span>
             <button
               disabled={(page + 1) * 48 >= entries.length}
               onClick={() => setPage((p) => p + 1)}
-            >
-              下一页
-            </button>
+            >{tr("下一页")}</button>
           </div>
         </section>
         <aside className="history-detail">
@@ -423,7 +421,7 @@ export function GenerationHistoryPage() {
                   {focus.run.project_path
                     ?.split(/[\\/]/)
                     .pop()
-                    ?.replace(/\.prompt-card\.png$/i, "") || "生成结果"}
+                    ?.replace(/\.prompt-card\.png$/i, "") || tr("生成结果")}
                 </h2>
                 <div className="run-image-actions">
                   {link.imageActions(focus.run, focus.index).map((a) => (
@@ -439,7 +437,7 @@ export function GenerationHistoryPage() {
               </header>
               <button
                 className="history-large"
-                aria-label="查看结果大图"
+                aria-label={tr("查看结果大图")}
                 disabled={!focus.run.outputs.length}
                 onClick={() => link.inspect(focus.run, focus.index, entries)}
               >
@@ -447,12 +445,12 @@ export function GenerationHistoryPage() {
                   <ResultImage run={focus.run} index={focus.index} />
                 ) : (
                   <span className="result-placeholder">
-                    {labels[focus.run.status]}
+                    {tr(labels[focus.run.status] || "")}
                   </span>
                 )}
               </button>
               <p className="history-date">
-                {new Date(focus.run.created).toLocaleString()}
+                {new Date(focus.run.created).toLocaleString(getLocale())}
               </p>
               <RunError run={focus.run} />
               <table className="history-parameters">
@@ -462,7 +460,7 @@ export function GenerationHistoryPage() {
                     <td>{focus.run.snapshot.generation.seed}</td>
                   </tr>
                   <tr>
-                    <th>尺寸 / 采样器</th>
+                    <th>{tr("尺寸 / 采样器")}</th>
                     <td>
                       {focus.run.snapshot.generation.width} ×{" "}
                       {focus.run.snapshot.generation.height} ·{" "}
@@ -470,7 +468,7 @@ export function GenerationHistoryPage() {
                     </td>
                   </tr>
                   <tr>
-                    <th>步数 / CFG</th>
+                    <th>{tr("步数 / CFG")}</th>
                     <td>
                       {focus.run.snapshot.generation.steps} /{" "}
                       {focus.run.snapshot.generation.cfg}
@@ -482,42 +480,33 @@ export function GenerationHistoryPage() {
                       {focus.run.snapshot.generation.model_controls?.lora.loras
                         .filter((l) => l.active)
                         .map((l) => `${l.name} · ${l.strength}`)
-                        .join(", ") || "无"}
+                        .join(", ") || tr("无")}
                     </td>
                   </tr>
                 </tbody>
               </table>
               <section className="history-differences">
-                <h3>提示词与参数差异 · 此图 → 当前</h3>
+                <h3>{tr("提示词与参数差异 · 此图 → 当前")}</h3>
                 <DiffBadges run={focus.run} all />
-                <p className="hint">
-                  完整恢复包含积极 /
-                  消极提示词、视觉组与成员、工作流分组、Seed、生成参数和模型设置。
-                </p>
-                <p className="hint" title={focus.run.request_id}>
-                  记录 #{focus.ordinal} · 快照{" "}
-                  {focus.run.snapshot.snapshot_id.slice(0, 8)} · 精确关联
-                </p>
+                <p className="hint">{tr("完整恢复包含积极 / 消极提示词、视觉组与成员、工作流分组、Seed、生成参数和模型设置。")}</p>
+                <p className="hint" title={focus.run.request_id}>{tr("记录 #")}{focus.ordinal}{" " + tr("· 快照")}{" "}
+                  {focus.run.snapshot.snapshot_id.slice(0, 8)}{" " + tr("· 精确关联")}</p>
               </section>
               <div className="history-restore">
                 <button
                   disabled={busy}
                   onClick={() => void link.pick(focus.run, focus.index)}
-                >
-                  选择差异…
-                </button>
+                >{tr("选择差异…")}</button>
                 <button
                   className="primary"
                   disabled={busy}
                   onClick={() => void restore()}
                 >
-                  <ArrowCounterClockwise size={16} />
-                  回到此版本
-                </button>
+                  <ArrowCounterClockwise size={16} />{tr("回到此版本")}</button>
               </div>
             </>
           ) : (
-            <p className="history-empty">选择结果查看参数、差异和操作</p>
+            <p className="history-empty">{tr("选择结果查看参数、差异和操作")}</p>
           )}
         </aside>
       </div>

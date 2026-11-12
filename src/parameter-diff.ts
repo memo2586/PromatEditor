@@ -1,3 +1,4 @@
+import { tr } from "./i18n";
 import type { Generation, Project } from "./types";
 
 export type ParameterChange = {
@@ -18,24 +19,24 @@ export function mappingChanges(
         ? []
         : [
             {
-              label: `工作流映射 · ${key}`,
-              from: from[key] || "无",
-              to: to?.[key] || "无",
-              text: `工作流映射 · ${key} ${from[key] || "无"} → ${to?.[key] || "无"}`,
+              label: tr("工作流映射 · {0}", key),
+              from: from[key] || tr("无"),
+              to: to?.[key] || tr("无"),
+              text: tr("工作流映射 · {0} {1} → {2}", key, from[key] || tr("无"), to?.[key] || tr("无")),
             },
           ],
     );
 }
 const display = (v: unknown): string => {
-  if (v == null || v === "") return "无";
-  if (typeof v === "boolean") return v ? "开启" : "关闭";
-  if (Array.isArray(v)) return v.map(display).join("；") || "无";
+  if (v == null || v === "") return tr("无");
+  if (typeof v === "boolean") return v ? tr("开启") : tr("关闭");
+  if (Array.isArray(v)) return v.map(display).join("；") || tr("无");
   if (typeof v === "object") {
     const o = v as Record<string, unknown>;
     if ("name" in o)
       return "strength" in o
-        ? `${o.name} · 模型权重 ${o.strength} · CLIP 权重 ${o.clipStrength} · ${display(o.active)}`
-        : `${o.name} · ${display(o.enabled)} · 目标 ${display(o.bypasser_id)}`;
+        ? tr("{0} · 模型权重 {1} · CLIP 权重 {2} · {3}", o.name, o.strength, o.clipStrength, display(o.active))
+        : tr("{0} · {1} · 目标 {2}", o.name, display(o.enabled), display(o.bypasser_id));
     return JSON.stringify(v);
   }
   return String(v);
@@ -55,15 +56,15 @@ export function parameterChanges(
       });
   };
   for (const [key, label] of Object.entries({
-    enabled: "参数同步",
+    enabled: tr("参数同步"),
     seed: "Seed",
-    seed_control: "Seed 控制",
+    seed_control: tr("Seed 控制"),
     steps: "Steps",
     cfg: "CFG",
-    sampler: "采样器",
-    width: "宽度",
-    height: "高度",
-    batch_size: "批量",
+    sampler: tr("采样器"),
+    width: tr("宽度"),
+    height: tr("高度"),
+    batch_size: tr("批量"),
   }))
     add(label, from[key as keyof Generation], to[key as keyof Generation]);
   const array = (
@@ -75,9 +76,9 @@ export function parameterChanges(
       a.forEach((x, i) => add(`${label} · ${x.name}`, x, b[i]));
     else add(label, a, b);
   };
-  array("工作流分组", from.groups, to.groups);
+  array(tr("工作流分组"), from.groups, to.groups);
   array(
-    "LoRA 模型与权重",
+    tr("LoRA 模型与权重"),
     from.model_controls?.lora.loras,
     to.model_controls?.lora.loras,
   );
@@ -89,11 +90,11 @@ export function parameterChanges(
     const a = from.model_controls?.[key as "lora" | "unet" | "vae"],
       b = to.model_controls?.[key as "lora" | "unet" | "vae"];
     for (const [field, name] of Object.entries({
-      enabled: "控制",
-      node_id: "节点",
-      node_type: "节点类型",
-      model: "模型",
-      weight_dtype: "权重类型",
+      enabled: tr("控制"),
+      node_id: tr("节点"),
+      node_type: tr("节点类型"),
+      model: tr("模型"),
+      weight_dtype: tr("权重类型"),
     }))
       add(
         `${label} · ${name}`,

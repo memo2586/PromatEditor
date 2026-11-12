@@ -1,3 +1,4 @@
+import { tr } from "./i18n";
 import { isTauri, invoke } from "@tauri-apps/api/core";
 import { LogicalPosition, LogicalSize } from "@tauri-apps/api/dpi";
 import { getCurrentWebview, Webview } from "@tauri-apps/api/webview";
@@ -77,7 +78,7 @@ export function ComfyNativeView({
     void (async () => {
       await invoke("create_comfy_webview", { label, url });
       view = await Webview.getByLabel(label);
-      if (!view) throw Error("ComfyUI 内置网页创建失败");
+      if (!view) throw Error(tr("ComfyUI 内置网页创建失败"));
       if (disposed) {
         await view.close().catch(() => {});
         return;
@@ -103,8 +104,8 @@ export function ComfyNativeView({
     };
   }, [url, opened]);
   return (
-    <div ref={host} className="comfy-native-host" aria-label="ComfyUI 内置网页">
-      {error && <p role="alert">内置网页加载失败：{error}</p>}
+    <div ref={host} className="comfy-native-host" aria-label={tr("ComfyUI 内置网页")}>
+      {error && <p role="alert">{tr("内置网页加载失败：")}{error}</p>}
     </div>
   );
 }

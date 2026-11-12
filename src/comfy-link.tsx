@@ -1,3 +1,4 @@
+import { getLocale, tr, trDiagnostic } from "./i18n";
 import { isTauri } from "@tauri-apps/api/core";
 import {
   createContext,
@@ -233,7 +234,7 @@ function readResultImage(
   return new Promise((resolve, reject) => {
     const start = () => {
       if (signal.aborted) {
-        reject(new Error("图片读取已取消"));
+        reject(new Error(tr("图片读取已取消")));
         return;
       }
       imageReads++;
@@ -316,13 +317,13 @@ export function ResultImage({
   return url ? (
     <img
       src={url}
-      alt={`生成结果 ${index + 1} · Seed ${run.snapshot.generation.seed}`}
+      alt={tr("生成结果 {0} · Seed {1}", index + 1, run.snapshot.generation.seed)}
     />
   ) : (
     <span
       className="result-placeholder"
-      aria-label={error ? "图片暂不可读" : "正在读取图片"}
-      title={error || "正在读取图片"}
+      aria-label={error ? tr("图片暂不可读") : tr("正在读取图片")}
+      title={error || tr("正在读取图片")}
     >
       {error ? (
         <WarningCircle size={28} className="film-status-icon" />
@@ -385,15 +386,15 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
       }
       app.notify(
         action === "copy"
-          ? "图片已复制"
+          ? tr("图片已复制")
           : action === "path"
-            ? "图片路径已复制"
+            ? tr("图片路径已复制")
             : action === "reveal"
-              ? "已在资源管理器中定位图片"
-              : "已请求默认应用打开图片",
+              ? tr("已在资源管理器中定位图片")
+              : tr("已请求默认应用打开图片"),
       );
     } catch (e) {
-      app.reportError(`图片操作失败：${String(e)}`);
+      app.reportError(tr("图片操作失败：{0}", String(e)));
     } finally {
       imageGate.current = false;
       setImageBusy(false);
@@ -401,25 +402,25 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
   }
   const imageActions = (run: Run, index: number) => [
     {
-      label: "复制图片",
+      label: tr("复制图片"),
       icon: Copy,
       action: () => imageAction(run, index, "copy"),
       disabled: imageBusy,
     },
     {
-      label: "复制图片路径",
+      label: tr("复制图片路径"),
       icon: LinkSimple,
       action: () => imageAction(run, index, "path"),
       disabled: imageBusy,
     },
     {
-      label: "在资源管理器中显示",
+      label: tr("在资源管理器中显示"),
       icon: FolderOpen,
       action: () => imageAction(run, index, "reveal"),
       disabled: imageBusy,
     },
     {
-      label: "用默认应用打开",
+      label: tr("用默认应用打开"),
       icon: ArrowSquareOut,
       action: () => imageAction(run, index, "open"),
       disabled: imageBusy,
@@ -563,9 +564,10 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
       if (isTauri())
         void rpc<{ notification_error?: string; progress_error?: string }>(
           "runs.feedback",
+          { locale: getLocale() },
         )
           .then((r) => {
-            if (r.notification_error) app.notify(r.notification_error);
+            if (r.notification_error) app.notify(trDiagnostic(r.notification_error));
           })
           .catch(() => {});
       setError("");
@@ -602,7 +604,7 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
         update(result);
         setCheck(null);
         setFilm(true);
-        app.notify("已锁定提交快照；后续编辑不会影响此任务");
+        app.notify(tr("已锁定提交快照；后续编辑不会影响此任务"));
       }
     } catch (e) {
       setError(String(e));
@@ -635,22 +637,19 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
     const answer = await app.confirm({
       title:
         action === "interrupt"
-          ? "中断当前任务？"
+          ? tr("中断当前任务？")
           : action === "clear"
-            ? "清空等待队列？"
-            : "取消等待任务？",
+            ? tr("清空等待队列？")
+            : tr("取消等待任务？"),
       body:
         action === "interrupt" ? (
-          <p>
-            中断当前 1 个正在生成的任务。等待队列中的 {ids.length}{" "}
-            个任务将继续保留。
-          </p>
+          <p>{tr("中断当前 1 个正在生成的任务。等待队列中的") + " "}{ids.length}{" "}{tr("个任务将继续保留。")}</p>
         ) : action === "clear" ? (
-          <p>取消等待队列中的 {ids.length} 个任务。当前生成继续执行。</p>
+          <p>{tr("取消等待队列中的") + " "}{ids.length}{" " + tr("个任务。当前生成继续执行。")}</p>
         ) : (
-          <p>取消选定的 1 个等待任务。</p>
+          <p>{tr("取消选定的 1 个等待任务。")}</p>
         ),
-      confirm: action === "interrupt" ? "中断当前" : "确认取消",
+      confirm: action === "interrupt" ? tr("中断当前") : tr("确认取消"),
       danger: true,
     });
     if (reopenConnection) setConnection(true);
@@ -673,15 +672,11 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
     if (
       snapshotName === undefined &&
       (await app.confirm({
-        title: "应用此记录的完整参数？",
+        title: tr("应用此记录的完整参数？"),
         body: (
-          <p>
-            覆盖当前项目的积极 /
-            消极提示词、视觉组与成员、工作流分组、Seed、生成参数和模型设置。可
-            Ctrl+Z 撤销。
-          </p>
+          <p>{tr("覆盖当前项目的积极 / 消极提示词、视觉组与成员、工作流分组、Seed、生成参数和模型设置。可 Ctrl+Z 撤销。")}</p>
         ),
-        confirm: "确认应用",
+        confirm: tr("确认应用"),
       })) !== "confirm"
     )
       return false;
@@ -702,8 +697,8 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
       setSnapshotRun(null);
       app.notify(
         snapshotName !== undefined
-          ? "已保存快照并应用完整参数 · Ctrl+Z 可撤销"
-          : "已应用完整参数 · Ctrl+Z 可撤销",
+          ? tr("已保存快照并应用完整参数 · Ctrl+Z 可撤销")
+          : tr("已应用完整参数 · Ctrl+Z 可撤销"),
       );
       return true;
     } catch (e) {
@@ -717,9 +712,9 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
   async function deleteRecord(run: Run) {
     if (
       (await app.confirm({
-        title: "删除生成记录？",
-        body: <p>移除这次生成的记录及胶片条中的所有结果，原始图片保留。</p>,
-        confirm: "删除记录",
+        title: tr("删除生成记录？"),
+        body: <p>{tr("移除这次生成的记录及胶片条中的所有结果，原始图片保留。")}</p>,
+        confirm: tr("删除记录"),
         danger: true,
       })) !== "confirm"
     )
@@ -735,7 +730,7 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
         setSelected(null);
         setDiff(null);
       }
-      app.notify("生成记录已删除，原图保留");
+      app.notify(tr("生成记录已删除，原图保留"));
     } catch (e) {
       app.reportError(String(e));
     }
@@ -755,7 +750,7 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
         full,
         ids: selectedRows,
       });
-      app.notify("已应用所选差异 · Ctrl+Z 可撤销");
+      app.notify(tr("已应用所选差异 · Ctrl+Z 可撤销"));
       setDiff(null);
       setSelected(null);
     } catch (e) {
@@ -885,14 +880,12 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
     poll,
   };
   const browserSelect = (
-    <label className="link-browser-select">
-      浏览器工作流
-      <select
-        aria-label="生成目标工作流"
+    <label className="link-browser-select">{tr("浏览器工作流")}<select
+        aria-label={tr("生成目标工作流")}
         value={client}
         onChange={(e) => setClient(e.target.value)}
       >
-        <option value="">自动选择唯一在线页面</option>
+        <option value="">{tr("自动选择唯一在线页面")}</option>
         {(check?.pages || status.live.pages || []).map((p) => (
           <option key={p.client_id} value={p.client_id}>
             {p.workflow} · {p.client_id.slice(0, 8)}
@@ -919,14 +912,14 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
           onClose={() => setParameterMenu(null)}
           items={[
             {
-              label: "重新生成",
+              label: tr("重新生成"),
               icon: Play,
               disabled: busy,
               action: () =>
                 void submit({ source_request: parameterMenu.run.request_id }),
             },
             {
-              label: "重新生成（随机）",
+              label: tr("重新生成（随机）"),
               icon: ArrowsClockwise,
               disabled: busy,
               action: () =>
@@ -936,20 +929,20 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
                 }),
             },
             {
-              label: "保存快照后应用参数…",
+              label: tr("保存快照后应用参数…"),
               icon: Stack,
               disabled: applyBusy,
               action: () => setSnapshotRun(parameterMenu.run),
             },
             {
-              label: "应用参数…",
+              label: tr("应用参数…"),
               icon: ArrowsLeftRight,
               disabled: applyBusy,
               action: () =>
                 void restoreVersion(parameterMenu.run).catch(() => {}),
             },
             {
-              label: "删除记录…",
+              label: tr("删除记录…"),
               icon: Trash,
               danger: true,
               disabled: active(parameterMenu.run),
@@ -971,8 +964,8 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
       )}
       {connection && (
         <Modal
-          title="ComfyUI 连接与队列"
-          heading="连接与队列"
+          title={tr("ComfyUI 连接与队列")}
+          heading={tr("连接与队列")}
           width={400}
           className="link-connection"
           onClose={() => {
@@ -997,9 +990,7 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
               <button
                 disabled={!status.live.queue?.running.length}
                 onClick={() => void queueAction("interrupt")}
-              >
-                中断当前
-              </button>
+              >{tr("中断当前")}</button>
               <button
                 disabled={
                   controlBusy ||
@@ -1010,13 +1001,13 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
                   diagnostics.queue.queue_pending?.length > 0 ||
                   status.runs.some(active)
                 }
-                title="仅队列空闲且无待核对任务时可用"
+                title={tr("仅队列空闲且无待核对任务时可用")}
                 onClick={async () => {
                   setControlBusy(true);
                   try {
                     await rpc("runs.free");
                     app.notify(
-                      "已请求卸载模型并释放缓存；显存由 ComfyUI 异步释放",
+                      tr("已请求卸载模型并释放缓存；显存由 ComfyUI 异步释放"),
                     );
                   } catch (e) {
                     app.reportError(String(e));
@@ -1025,12 +1016,10 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
                     void diagnose();
                   }
                 }}
-              >
-                释放显存
-              </button>
+              >{tr("释放显存")}</button>
               <IconButton
                 icon={ArrowSquareOut}
-                label="打开 ComfyUI"
+                label={tr("打开 ComfyUI")}
                 onClick={() =>
                   void openExternal(app.data.bridge.comfyUrl).catch((e) =>
                     app.reportError(String(e)),
@@ -1039,7 +1028,7 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
               />
               <IconButton
                 icon={Trash}
-                label="清空等待队列"
+                label={tr("清空等待队列")}
                 disabled={!status.live.queue?.pending.length}
                 onClick={() => void queueAction("clear")}
               />
@@ -1054,10 +1043,10 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
           <div className="link-chain">
             {[
               {
-                name: "编辑器",
+                name: tr("编辑器"),
                 icon: Desktop,
                 ok: diagnostics?.editor && !app.data.bridge.error,
-                detail: "本机 · 就绪",
+                detail: tr("本机 · 就绪"),
               },
               {
                 name: diagnostics?.live?.bridge_version
@@ -1067,20 +1056,20 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
                 ok: diagnostics?.bridge,
                 detail: diagnostics?.bridge
                   ? diagnostics?.live?.bridge_version
-                    ? "已连接 · 联动协议正常"
-                    : "已连接 · 版本信息未提供"
-                  : "连接不可用",
+                    ? tr("已连接 · 联动协议正常")
+                    : tr("已连接 · 版本信息未提供")
+                  : tr("连接不可用"),
               },
               {
-                name: "ComfyUI 后端",
+                name: tr("ComfyUI 后端"),
                 icon: Cpu,
                 ok: diagnostics?.backend,
                 detail: diagnostics?.backend
-                  ? `在线 · 延迟 ${diagnostics.backend_latency_ms ?? "未知"} ms`
-                  : "连接不可用",
+                  ? tr("在线 · 延迟 {0} ms", diagnostics.backend_latency_ms ?? tr("未知"))
+                  : tr("连接不可用"),
               },
               {
-                name: "浏览器工作流页",
+                name: tr("浏览器工作流页"),
                 icon: Browser,
                 ok: diagnostics?.live?.pages?.some((p: BrowserPage) =>
                   p.bridges?.some(
@@ -1094,26 +1083,26 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
                     (p: BrowserPage) => p.client_id === client,
                   )?.workflow ||
                   diagnostics?.live?.pages?.[0]?.workflow ||
-                  "未打开绑定工作流",
+                  tr("未打开绑定工作流"),
               },
             ].map(({ name, icon: StageIcon, ok, detail }) => (
               <p key={name}>
                 <StageIcon size={16} />
                 <span className="chain-copy">
                   <strong>{name}</strong>
-                  <small>{!diagnostics ? "检测中" : detail}</small>
+                  <small>{!diagnostics ? tr("检测中") : detail}</small>
                 </span>
                 {ok ? (
                   <CheckCircle
                     className="chain-ok"
                     size={16}
-                    aria-label="在线"
+                    aria-label={tr("在线")}
                   />
                 ) : (
                   <WarningCircle
                     className="chain-error"
                     size={16}
-                    aria-label={!diagnostics ? "检测中" : "离线"}
+                    aria-label={!diagnostics ? tr("检测中") : tr("离线")}
                   />
                 )}
               </p>
@@ -1134,18 +1123,18 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
                 return (
                   <div key={i} title={d.name}>
                     <div className="memory-label">
-                      <span>显存</span>
+                      <span>{tr("显存")}</span>
                       <span>
                         {known
                           ? `${(used / 1073741824).toFixed(2)} / ${(d.vram_total / 1073741824).toFixed(2)} GiB`
-                          : "显存信息不可用"}
+                          : tr("显存信息不可用")}
                       </span>
                     </div>
                     {known && (
                       <div
                         className="memory-track"
                         role="progressbar"
-                        aria-label={`${d.name} 显存使用量`}
+                        aria-label={tr("{0} 显存使用量", d.name)}
                         aria-valuemin={0}
                         aria-valuemax={d.vram_total}
                         aria-valuenow={used}
@@ -1160,17 +1149,16 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
               })
             ) : (
               <div className="memory-label">
-                <span>显存</span>
-                <span>显存信息不可用</span>
+                <span>{tr("显存")}</span>
+                <span>{tr("显存信息不可用")}</span>
               </div>
             )}
           </div>
-          <div className="queue-summary">
-            运行中 {status.live.queue?.running.length || 0} · 等待{" "}
+          <div className="queue-summary">{tr("运行中") + " "}{status.live.queue?.running.length || 0}{" " + tr("· 等待")}{" "}
             {status.live.queue?.pending.length || 0}
             <IconButton
               icon={Gear}
-              label="连接设置与更多选项"
+              label={tr("连接设置与更多选项")}
               onClick={() => setConnectionDetails((v) => !v)}
             />
           </div>
@@ -1196,25 +1184,25 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
                     <strong>
                       {ordinal ? `#${ordinal} · ` : ""}
                       {running
-                        ? `${progress?.node || "执行中"}${progress?.max ? ` ${progress.value || 0}/${progress.max}` : ""}`
+                        ? `${progress?.node || tr("执行中")}${progress?.max ? ` ${progress.value || 0}/${progress.max}` : ""}`
                         : r
-                          ? `${r.snapshot.generation.seed_control === "fixed" ? "锁定 Seed" : "Seed"} ${r.snapshot.generation.seed}`
+                          ? `${r.snapshot.generation.seed_control === "fixed" ? tr("锁定 Seed") : "Seed"} ${r.snapshot.generation.seed}`
                           : pid}
                     </strong>
                     <small>
                       {running
                         ? r
                           ? progress?.elapsed_seconds != null
-                            ? `已运行 ${Math.max(0, Math.floor(progress.elapsed_seconds))} s`
-                            : "执行中 · 耗时尚未提供"
-                          : "运行中"
-                        : "等待 · 已锁定快照"}
+                            ? tr("已运行 {0} s", Math.max(0, Math.floor(progress.elapsed_seconds)))
+                            : tr("执行中 · 耗时尚未提供")
+                          : tr("运行中")
+                        : tr("等待 · 已锁定快照")}
                     </small>
                   </span>
                   {!running && (
                     <IconButton
                       icon={X}
-                      label="取消此任务"
+                      label={tr("取消此任务")}
                       onClick={() => void queueAction("cancel", pid)}
                     />
                   )}
@@ -1223,7 +1211,7 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
             })}
             {!status.live.queue?.running.length &&
               !status.live.queue?.pending.length && (
-                <p className="hint">队列空闲</p>
+                <p className="hint">{tr("队列空闲")}</p>
               )}
           </div>
           {connectionDetails && (
@@ -1237,23 +1225,18 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
                     className="locked-snapshot-note"
                     key={run.request_id}
                   >
-                    <strong>排队任务已锁定快照</strong>
-                    <p>排队快照 · Seed {run.snapshot.generation.seed}</p>
-                    <p>
-                      当前编辑 ·{" "}
-                      {changes(run.state, app.data.project.State).length}{" "}
-                      处差异，不影响排队任务
-                    </p>
+                    <strong>{tr("排队任务已锁定快照")}</strong>
+                    <p>{tr("排队快照 · Seed") + " "}{run.snapshot.generation.seed}</p>
+                    <p>{tr("当前编辑 ·")}{" "}
+                      {changes(run.state, app.data.project.State).length}{" "}{tr("处差异，不影响排队任务")}</p>
                     <details>
-                      <summary>查看排队快照</summary>
-                      <p>积极提示词</p>
-                      <pre>{run.state.Positive.Text || "无"}</pre>
-                      <p>消极提示词</p>
-                      <pre>{run.state.Negative.Text || "无"}</pre>
+                      <summary>{tr("查看排队快照")}</summary>
+                      <p>{tr("积极提示词")}</p>
+                      <pre>{run.state.Positive.Text || tr("无")}</pre>
+                      <p>{tr("消极提示词")}</p>
+                      <pre>{run.state.Negative.Text || tr("无")}</pre>
                     </details>
-                    <button onClick={() => setConnection(false)}>
-                      继续编辑
-                    </button>
+                    <button onClick={() => setConnection(false)}>{tr("继续编辑")}</button>
                   </section>
                 ))}
               <div className="inline-actions">
@@ -1261,14 +1244,12 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
                   onClick={() =>
                     void navigator.clipboard
                       .writeText(app.data.bridge.comfyUrl)
-                      .then(() => app.notify("已复制工作流页地址"))
+                      .then(() => app.notify(tr("已复制工作流页地址")))
                   }
-                >
-                  复制地址
-                </button>
+                >{tr("复制地址")}</button>
                 <IconButton
                   icon={ArrowsClockwise}
-                  label="重新诊断连接与显存"
+                  label={tr("重新诊断连接与显存")}
                   onClick={() => void diagnose()}
                 />
                 <button
@@ -1276,9 +1257,7 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
                     setConnection(false);
                     app.open("generation");
                   }}
-                >
-                  连接设置
-                </button>
+                >{tr("连接设置")}</button>
               </div>
               <label>
                 <input
@@ -1292,12 +1271,8 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
                       },
                     })
                   }
-                />
-                窗口失焦时发送 Windows 完成通知
-              </label>
-              <p className="hint">
-                显存释放为异步请求；未知受理任务需先核对队列。
-              </p>
+                />{tr("窗口失焦时发送 Windows 完成通知")}</label>
+              <p className="hint">{tr("显存释放为异步请求；未知受理任务需先核对队列。")}</p>
             </section>
           )}
           {(diagnostics?.bridge_error || diagnostics?.backend_error) && (
@@ -1311,9 +1286,7 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
                 setConnection(false);
                 app.open("runs");
               }}
-            >
-              查看生成记录
-            </button>
+            >{tr("查看生成记录")}</button>
           </div>
           {status.runs
             .filter(
@@ -1321,7 +1294,7 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
             )
             .map((r) => (
               <p role="status" key={r.request_id}>
-                {r.error || "等待浏览器受理；请核对队列和历史，不会自动重提。"}
+                {r.error || tr("等待浏览器受理；请核对队列和历史，不会自动重提。")}
               </p>
             ))}
         </Modal>
@@ -1331,27 +1304,25 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
           icon={WarningCircle}
           title={
             !check.issues.length
-              ? "提交前体检通过"
+              ? tr("提交前体检通过")
               : check.issues.some((issue) => issue.blocking)
-                ? `生成前需要处理 ${check.issues.length} 个问题`
-                : `生成前有 ${check.issues.length} 项建议关注`
+                ? tr("生成前需要处理 {0} 个问题", check.issues.length)
+                : tr("生成前有 {0} 项建议关注", check.issues.length)
           }
-          subtitle="解决问题后重新检查"
+          subtitle={tr("解决问题后重新检查")}
           width={584}
           className="link-preflight"
           onClose={() => setCheck(null)}
           footer={
             <>
-              <button onClick={() => setCheck(null)}>取消</button>
+              <button onClick={() => setCheck(null)}>{tr("取消")}</button>
               <span className="spacer" />
-              <button onClick={() => void recheck()}>重新检查</button>
+              <button onClick={() => void recheck()}>{tr("重新检查")}</button>
               <button
                 className="primary"
                 disabled={busy || check.issues.some((i) => i.blocking)}
                 onClick={() => void submit(options)}
-              >
-                仍然生成
-              </button>
+              >{tr("仍然生成")}</button>
             </>
           }
         >
@@ -1359,18 +1330,18 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
           {check.issues.map((issue, i) => (
             <div className="preflight-issue" key={i}>
               <span className={`issue-kind ${issue.blocking ? "" : "warning"}`}>
-                {issue.blocking ? "阻断" : "建议"}
+                {issue.blocking ? tr("阻断") : tr("建议")}
               </span>
               <div>
-                <strong>{issue.message}</strong>
+                <strong>{trDiagnostic(issue.message)}</strong>
                 <p className="preflight-reason">
                   {issue.kind === "lora"
-                    ? "文件可能已移动或重命名，替换后重新生成。"
+                    ? tr("文件可能已移动或重命名，替换后重新生成。")
                     : issue.kind === "parameters"
-                      ? "建议调整为有效范围内的 8 的倍数。"
+                      ? tr("建议调整为有效范围内的 8 的倍数。")
                       : issue.kind === "group"
-                        ? "同步目标仅作用于当前项目的此分组。"
-                        : "打开绑定的工作流，并保持页面在线。"}
+                        ? tr("同步目标仅作用于当前项目的此分组。")
+                        : tr("打开绑定的工作流，并保持页面在线。")}
                 </p>
               </div>
               {issue.kind === "group" && issue.options?.length ? (
@@ -1379,9 +1350,7 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
                     setMapping(issue);
                     setMappingTarget("");
                   }}
-                >
-                  选择同步目标
-                </button>
+                >{tr("选择同步目标")}</button>
               ) : issue.kind === "browser" || issue.kind === "connection" ? (
                 <button
                   onClick={() =>
@@ -1389,18 +1358,14 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
                       app.reportError(String(e)),
                     )
                   }
-                >
-                  打开页面
-                </button>
+                >{tr("打开页面")}</button>
               ) : issue.kind === "lora" ? (
                 <button
                   onClick={() => {
                     setCheck(null);
                     app.open("models");
                   }}
-                >
-                  替换 LoRA
-                </button>
+                >{tr("替换 LoRA")}</button>
               ) : issue.kind === "parameters" ? (
                 <button
                   onClick={async () => {
@@ -1422,29 +1387,28 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
                     app.open("generation");
                   }}
                 >
-                  {/宽高/.test(issue.message) ? "调整尺寸" : "调整参数"}
+                  {/宽高/.test(issue.message) ? tr("调整尺寸") : tr("调整参数")}
                 </button>
               ) : null}
             </div>
           ))}
           {!check.issues.length ? (
-            <p>体检通过，可以生成。</p>
+            <p>{tr("体检通过，可以生成。")}</p>
           ) : (
-            <p className="preflight-summary">
-              阻断问题 {check.issues.filter((i) => i.blocking).length} 项 ·{" "}
+            <p className="preflight-summary">{tr("阻断问题") + " "}{check.issues.filter((i) => i.blocking).length}{" " + tr("项 ·")}{" "}
               {check.issues.some((i) => i.blocking)
-                ? "当前无法提交"
-                : "仅建议，可继续生成"}
+                ? tr("当前无法提交")
+                : tr("仅建议，可继续生成")}
             </p>
           )}
         </Modal>
       )}
       {mapping && (
         <Modal
-          title={`${mapping.name} 对应多个工作流分组`}
+          title={tr("{0} 对应多个工作流分组", mapping.name)}
           className="group-mapping-dialog"
           width={936}
-          subtitle="选择当前项目的同步目标，避免提示词写入错误分组。"
+          subtitle={tr("选择当前项目的同步目标，避免提示词写入错误分组。")}
           onClose={() => setMapping(null)}
           footer={
             <>
@@ -1472,11 +1436,9 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
                     app.reportError(String(e));
                   }
                 }}
-              >
-                刷新目录
-              </button>
+              >{tr("刷新目录")}</button>
               <span className="spacer" />
-              <button onClick={() => setMapping(null)}>返回体检</button>
+              <button onClick={() => setMapping(null)}>{tr("返回体检")}</button>
               <button
                 className="primary"
                 disabled={!mappingTarget || busy}
@@ -1492,16 +1454,14 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
                     app.reportError(String(e));
                   }
                 }}
-              >
-                保存映射并重检
-              </button>
+              >{tr("保存映射并重检")}</button>
             </>
           }
         >
           <div
             className="group-mapping-list"
             role="listbox"
-            aria-label="工作流同步目标"
+            aria-label={tr("工作流同步目标")}
           >
             {mapping.options?.map((g) => (
               <button
@@ -1511,24 +1471,22 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
                 className={mappingTarget === g.bypasser_id ? "selected" : ""}
                 onClick={() => setMappingTarget(g.bypasser_id)}
               >
-                {g.name} · 节点 #{g.bypasser_id}
+                {g.name}{" " + tr("· 节点 #")}{g.bypasser_id}
                 {g.title || g.description
                   ? ` · ${g.title || g.description}`
                   : ""}
               </button>
             ))}
           </div>
-          <p className="hint">映射范围：当前项目 · {mapping.name} 组</p>
-          <p className="hint">
-            刷新目录后保留有效映射；找不到目标时需重新选择。
-          </p>
+          <p className="hint">{tr("映射范围：当前项目 ·") + " "}{mapping.name}{" " + tr("组")}</p>
+          <p className="hint">{tr("刷新目录后保留有效映射；找不到目标时需重新选择。")}</p>
         </Modal>
       )}
       {selected && (
         <Modal
-          title={diff ? "只取这张图的部分差异" : "生成结果与提示词版本"}
+          title={diff ? tr("只取这张图的部分差异") : tr("生成结果与提示词版本")}
           subtitle={
-            diff ? "当前编辑 → 目标图 · Ctrl / Shift 多选要应用的行" : undefined
+            diff ? tr("当前编辑 → 目标图 · Ctrl / Shift 多选要应用的行") : undefined
           }
           width={diff ? 936 : 1600}
           className={diff ? "link-difference-picker" : "run-detail-dialog"}
@@ -1541,52 +1499,42 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
               <>
                 <button
                   onClick={() => setSelectedRows(diff.rows.map((r) => r.id))}
-                >
-                  全选
-                </button>
+                >{tr("全选")}</button>
                 <button
                   disabled={!selectedRows.length}
                   onClick={() => setSelectedRows([])}
-                >
-                  清空
-                </button>
+                >{tr("清空")}</button>
                 <span className="spacer" />
                 <button
                   onClick={() => {
                     setDiff(null);
                     setSelected(null);
                   }}
-                >
-                  取消
-                </button>
-                <button disabled={applyBusy} onClick={() => void apply(true)}>
-                  应用完整参数…
-                </button>
+                >{tr("取消")}</button>
+                <button disabled={applyBusy} onClick={() => void apply(true)}>{tr("应用完整参数…")}</button>
                 <button
                   className="primary"
                   disabled={applyBusy || !selectedRows.length}
                   onClick={() => void apply(false)}
-                >
-                  应用 {selectedRows.length} 项差异
-                </button>
+                >{tr("应用") + " "}{selectedRows.length}{" " + tr("项差异")}</button>
               </>
             ) : (
               <>
                 <span
                   className="hint"
-                  aria-label="大图记录位置"
+                  aria-label={tr("大图记录位置")}
                   aria-live="polite"
                 >
                   {resultPosition >= 0
                     ? `${resultPosition + 1} / ${navigable.length}`
-                    : "当前记录"}
+                    : tr("当前记录")}
                 </span>
-                <button onClick={() => setSelected(null)}>关闭</button>
+                <button onClick={() => setSelected(null)}>{tr("关闭")}</button>
                 <button
                   aria-expanded={resultDetails}
                   onClick={() => setResultDetails((v) => !v)}
                 >
-                  {resultDetails ? "收起详情" : "显示详情"}
+                  {resultDetails ? tr("收起详情") : tr("显示详情")}
                 </button>
                 <span className="spacer" />
                 <button
@@ -1595,18 +1543,14 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
                       app.reportError(String(e)),
                     )
                   }
-                >
-                  只取差异…
-                </button>
+                >{tr("只取差异…")}</button>
                 <button
                   className="primary"
                   disabled={applyBusy}
                   onClick={() =>
                     void restoreVersion(selected.run).catch(() => {})
                   }
-                >
-                  回到此版本
-                </button>
+                >{tr("回到此版本")}</button>
               </>
             )
           }
@@ -1616,13 +1560,13 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
               <div
                 className="link-diff-table"
                 role="listbox"
-                aria-label="选择提示词与参数差异"
+                aria-label={tr("选择提示词与参数差异")}
                 aria-multiselectable="true"
               >
                 <div className="link-diff-header">
-                  <span>提示词 / 参数</span>
-                  <span>当前</span>
-                  <span>应用后</span>
+                  <span>{tr("提示词 / 参数")}</span>
+                  <span>{tr("当前")}</span>
+                  <span>{tr("应用后")}</span>
                 </div>
                 {diff.rows.map((row, i) => (
                   <button
@@ -1653,36 +1597,33 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
                     }}
                   >
                     <span>
-                      {row.side === "negative" ? "消极 · " : ""}
-                      {row.label}
+                      {row.side === "negative" ? tr("消极 · ") : ""}
+                      {tr(row.label)}
                     </span>
-                    <span>{row.from || "无"}</span>
+                    <span>{row.from || tr("无")}</span>
                     <span>
                       {!row.to
-                        ? "移除"
+                        ? tr("移除")
                         : !row.from
-                          ? `恢复 · ${row.to_weight != null ? Number(row.to_weight).toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 10, useGrouping: false }) : row.to}`
+                          ? tr("恢复 · {0}", row.to_weight != null ? Number(row.to_weight).toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 10, useGrouping: false }) : row.to)
                           : row.to}
                     </span>
                   </button>
                 ))}
               </div>
-              <p className="hint">
-                已选 {selectedRows.length} 项 ·
-                其他提示词与参数保持当前值。应用失败时整笔回滚。
-              </p>
+              <p className="hint">{tr("已选") + " "}{selectedRows.length}{" " + tr("项 · 其他提示词与参数保持当前值。应用失败时整笔回滚。")}</p>
             </>
           ) : (
             <>
               <div
                 className="run-diff-direction"
-                aria-label="对比方向：这张图的快照到当前编辑"
+                aria-label={tr("对比方向：这张图的快照到当前编辑")}
               >
                 <ArrowsLeftRight size={16} aria-hidden="true" />
-                <span className="direction-label">对比方向</span>
-                <span className="direction-source">这张图的快照</span>
+                <span className="direction-label">{tr("对比方向")}</span>
+                <span className="direction-source">{tr("这张图的快照")}</span>
                 <ArrowRight size={14} aria-hidden="true" />
-                <span>当前编辑</span>
+                <span>{tr("当前编辑")}</span>
               </div>
               <div
                 className={`run-detail ${resultDetails ? "with-details" : ""}`}
@@ -1696,7 +1637,7 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
                       <>
                         <button
                           className="result-navigation previous"
-                          aria-label="上一条记录 · ←"
+                          aria-label={tr("上一条记录 · ←")}
                           disabled={applyBusy || resultPosition <= 0}
                           onPointerDown={(e) => e.stopPropagation()}
                           onDoubleClick={(e) => e.stopPropagation()}
@@ -1706,7 +1647,7 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
                         </button>
                         <button
                           className="result-navigation next"
-                          aria-label="下一条记录 · →"
+                          aria-label={tr("下一条记录 · →")}
                           disabled={
                             applyBusy ||
                             resultPosition < 0 ||
@@ -1733,7 +1674,7 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
                   </ResultViewport>
                 </div>
                 <aside hidden={!resultDetails}>
-                  <div className="run-image-actions" aria-label="图片快捷操作">
+                  <div className="run-image-actions" aria-label={tr("图片快捷操作")}>
                     {imageActions(selected.run, selected.index).map((item) => (
                       <IconButton
                         key={item.label}
@@ -1749,7 +1690,7 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
                     text={selected.run.outputs[selected.index]?.filename || ""}
                   />
                   <strong>
-                    {new Date(selected.run.created).toLocaleString()}
+                    {new Date(selected.run.created).toLocaleString(getLocale())}
                   </strong>
                   <p>Seed {selected.run.snapshot.generation.seed}</p>
                   <p>
@@ -1758,9 +1699,7 @@ export function ComfyLinkProvider({ children }: { children: ReactNode }) {
                     {selected.run.snapshot.generation.steps} Steps
                   </p>
                   <DiffBadges run={selected.run} all />
-                  <p className="hint">
-                    恢复完整参数以一次事务应用，可 Ctrl+Z 撤销。
-                  </p>
+                  <p className="hint">{tr("恢复完整参数以一次事务应用，可 Ctrl+Z 撤销。")}</p>
                 </aside>
               </div>
             </>
@@ -1795,34 +1734,28 @@ function SnapshotBeforeApply({
   };
   return (
     <Modal
-      title="保存快照后应用参数"
+      title={tr("保存快照后应用参数")}
       width={600}
       onClose={onClose}
       footer={
         <>
           <span className="spacer" />
-          <button disabled={busy} onClick={onClose}>
-            取消
-          </button>
+          <button disabled={busy} onClick={onClose}>{tr("取消")}</button>
           <button
             className="primary"
             disabled={busy || !name.trim()}
             onClick={() => void save()}
-          >
-            保存快照并应用
-          </button>
+          >{tr("保存快照并应用")}</button>
         </>
       }
     >
-      <p>将完整保存当前项目，再恢复目标记录的提示词、分组和生成参数。</p>
-      <label className="snapshot-name-field">
-        快照名称
-        <input
+      <p>{tr("将完整保存当前项目，再恢复目标记录的提示词、分组和生成参数。")}</p>
+      <label className="snapshot-name-field">{tr("快照名称")}<input
           autoFocus
-          aria-label="快照名称"
+          aria-label={tr("快照名称")}
           value={name}
           disabled={busy}
-          placeholder="输入快照名称（必填）"
+          placeholder={tr("输入快照名称（必填）")}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.nativeEvent.isComposing) void save();
@@ -1854,7 +1787,7 @@ function FilmDifferences({ run, index }: { run: Run; index: number }) {
   const prompts = positive.map((text) => ({ text, kind: "prompt" }));
   const other = parameters.map((r) => ({ text: r.text, kind: "parameter" }));
   const rest = negative.map((text) => ({
-    text: `消极 · ${text}`,
+    text: tr("消极 · {0}", text),
     kind: "parameter",
   }));
   const all = [...prompts, ...other, ...rest];
@@ -1902,7 +1835,7 @@ function FilmDifferences({ run, index }: { run: Run; index: number }) {
         ? String(run.snapshot.generation.seed)
         : await rpc<string>("runs.prompt", { request_id: run.request_id });
       await navigator.clipboard.writeText(text);
-      app.notify(seed ? "Seed 已复制" : "目标图像的完整积极提示词已复制");
+      app.notify(seed ? tr("Seed 已复制") : tr("目标图像的完整积极提示词已复制"));
     } catch (e) {
       app.reportError(String(e));
     }
@@ -1918,7 +1851,7 @@ function FilmDifferences({ run, index }: { run: Run; index: number }) {
     <div
       className="film-info"
       ref={root}
-      aria-label="生成参数差异"
+      aria-label={tr("生成参数差异")}
       onContextMenu={(e) => {
         e.preventDefault();
         link.parameterMenu(run, e.clientX, e.clientY);
@@ -1934,7 +1867,7 @@ function FilmDifferences({ run, index }: { run: Run; index: number }) {
       <div className="film-info-content">
         <button
           className="film-seed"
-          title="复制 Seed 数值"
+          title={tr("复制 Seed 数值")}
           onClick={() => void copy(true)}
         >
           Seed {run.snapshot.generation.seed}
@@ -1958,8 +1891,8 @@ function FilmDifferences({ run, index }: { run: Run; index: number }) {
                 className={style(r.text)}
                 title={
                   r.kind === "prompt"
-                    ? "复制目标图像的完整积极提示词"
-                    : r.text + " · 选择导入参数"
+                    ? tr("复制目标图像的完整积极提示词")
+                    : r.text + tr(" · 选择导入参数")
                 }
                 onClick={() =>
                   r.kind === "prompt" ? void copy() : void link.pick(run, index)
@@ -1971,16 +1904,14 @@ function FilmDifferences({ run, index }: { run: Run; index: number }) {
             {hidden > 0 && (
               <button
                 className="film-more"
-                title="查看全部提示词与参数差异"
+                title={tr("查看全部提示词与参数差异")}
                 onClick={() => void link.pick(run, index)}
               >
                 +{hidden}
               </button>
             )}
             {!all.length && (
-              <button onClick={() => void link.pick(run, index)}>
-                与当前参数相同
-              </button>
+              <button onClick={() => void link.pick(run, index)}>{tr("与当前参数相同")}</button>
             )}
           </div>
         </div>
@@ -2018,7 +1949,7 @@ export function DiffBadges({
         ...parameters.filter((row) => row.startsWith("Seed ")),
       ];
   return (
-    <div className="diff-badges" title={rows.join("\n") || "与当前参数相同"}>
+    <div className="diff-badges" title={rows.join("\n") || tr("与当前参数相同")}>
       {(all ? rows : rows.slice(0, limit)).map((s, i) => (
         <small
           className={
@@ -2034,7 +1965,7 @@ export function DiffBadges({
         </small>
       ))}
       {!all && rows.length > limit && <small>+{rows.length - limit}</small>}
-      {!rows.length && <small>与当前参数相同</small>}
+      {!rows.length && <small>{tr("与当前参数相同")}</small>}
     </div>
   );
 }
@@ -2111,12 +2042,12 @@ export function GenerateButton() {
     <div className="generate-diff-content">
       <strong>
         {offline
-          ? "浏览器工作流未连接 · 点击查看连接链路"
+          ? tr("浏览器工作流未连接 · 点击查看连接链路")
           : count
-            ? `自上次生成以来 · ${count} 处改动`
+            ? tr("自上次生成以来 · {0} 处改动", count)
             : latest
-              ? "与上次生成相同，将按 Seed 控制方式生成"
-              : "生成 · Ctrl+Enter"}
+              ? tr("与上次生成相同，将按 Seed 控制方式生成")
+              : tr("生成 · Ctrl+Enter")}
       </strong>
       {!offline &&
         latest &&
@@ -2140,7 +2071,7 @@ export function GenerateButton() {
     <div className="generate-split">
       <button
         className={`primary generate-main ${offline ? "offline" : ""}`}
-        aria-label="生成 · Ctrl+Enter"
+        aria-label={tr("生成 · Ctrl+Enter")}
         aria-disabled={link.busy}
         aria-busy={link.busy}
         data-offline={offline}
@@ -2164,18 +2095,18 @@ export function GenerateButton() {
         )}
         <span>
           {checkingVisible
-            ? "体检中"
+            ? tr("体检中")
             : completed
-              ? "已完成"
+              ? tr("已完成")
               : pending
-                ? "待确认"
+                ? tr("待确认")
                 : progress?.max
                   ? `${progress.value || 0} / ${progress.max}`
                   : running
-                    ? "生成中"
+                    ? tr("生成中")
                     : queued
-                      ? `排队 ${queued}`
-                      : "生成"}
+                      ? tr("排队 {0}", queued)
+                      : tr("生成")}
         </span>
         {count > 0 && <small className="change-count">{count}</small>}
         {!!progress?.max && (
@@ -2191,7 +2122,7 @@ export function GenerateButton() {
       <IconButton
         icon={CaretDown}
         className="primary"
-        label="生成选项"
+        label={tr("生成选项")}
         onClick={(e) => {
           const r = e.currentTarget.getBoundingClientRect();
           setMenu({ x: r.right - 240, y: r.bottom + 8 });
@@ -2203,41 +2134,41 @@ export function GenerateButton() {
           onClose={() => setMenu(null)}
           items={[
             {
-              label: "生成",
+              label: tr("生成"),
               icon: Play,
               shortcut: "Ctrl+Enter",
               action: () => link.submit(),
             },
-            { label: "生成 ×N…", icon: Stack, action: () => setBatch(true) },
+            { label: tr("生成 ×N…"), icon: Stack, action: () => setBatch(true) },
             {
-              label: "锁定 Seed 重跑",
+              label: tr("锁定 Seed 重跑"),
               icon: Lock,
               shortcut: "Ctrl+Shift+Enter",
               action: () => link.submit({ lock_seed: true }),
             },
             {
-              label: "仅提交消极词修改",
+              label: tr("仅提交消极词修改"),
               icon: TextT,
               disabled: !latest,
               action: () => link.submit({ mode: "negative" }),
             },
             { separator: true, label: "" },
             {
-              label: "中断当前任务…",
+              label: tr("中断当前任务…"),
               icon: StopCircle,
               shortcut: "Ctrl+.",
               disabled: !link.status.live.queue?.running.length,
               action: () => link.queueAction("interrupt"),
             },
             {
-              label: "清空等待队列（保留当前任务）…",
+              label: tr("清空等待队列（保留当前任务）…"),
               icon: Trash,
               disabled: !link.status.live.queue?.pending.length,
               action: () => link.queueAction("clear"),
             },
-            { label: "连接与队列…", action: link.connect },
+            { label: tr("连接与队列…"), action: link.connect },
             {
-              label: link.film ? "折叠结果胶片条" : "展开结果胶片条",
+              label: link.film ? tr("折叠结果胶片条") : tr("展开结果胶片条"),
               shortcut: "Ctrl+J",
               action: link.toggleFilm,
             },
@@ -2246,12 +2177,12 @@ export function GenerateButton() {
       )}
       {batch && (
         <Modal
-          title="批量生成"
+          title={tr("批量生成")}
           width={400}
           onClose={() => setBatch(false)}
           footer={
             <>
-              <button onClick={() => setBatch(false)}>取消</button>
+              <button onClick={() => setBatch(false)}>{tr("取消")}</button>
               <span className="spacer" />
               <button
                 className="primary"
@@ -2264,26 +2195,21 @@ export function GenerateButton() {
                   setBatch(false);
                   void link.submit({ count: batchCount });
                 }}
-              >
-                生成 ×{batchCount || "N"}
+              >{tr("生成 ×")}{batchCount || "N"}
               </button>
             </>
           }
         >
-          <label>
-            任务数
-            <input
+          <label>{tr("任务数")}<input
               type="number"
-              aria-label="批量任务数"
+              aria-label={tr("批量任务数")}
               min={1}
               max={16}
               value={batchCount || ""}
               onChange={(e) => setBatchCount(Number(e.target.value))}
             />
           </label>
-          <p>
-            一次锁定同一版提示词，每个任务保存独立快照，Seed 沿用当前控制方式。
-          </p>
+          <p>{tr("一次锁定同一版提示词，每个任务保存独立快照，Seed 沿用当前控制方式。")}</p>
         </Modal>
       )}
     </div>
@@ -2330,36 +2256,34 @@ export function ComfyConnectionCard() {
       </span>
       <CaretRight size={16} />
       {p?.preview && /^data:image\/(jpeg|png|webp);base64,/.test(p.preview) && (
-        <img className="live-preview" alt="去噪预览" src={p.preview} />
+        <img className="live-preview" alt={tr("去噪预览")} src={p.preview} />
       )}
       <small>
         {link.error
-          ? "连接失败 · 点击查看"
+          ? tr("连接失败 · 点击查看")
           : run
-            ? `节点 ${p?.node || "执行中"}`
-            : "连接与队列"}
+            ? tr("节点 {0}", p?.node || tr("执行中"))
+            : tr("连接与队列")}
       </small>
       {p?.max ? (
         <>
           <small>
             {p.value || 0} / {p.max}
             {p.remaining_seconds != null
-              ? ` · 约 ${p.remaining_seconds} s`
+              ? tr(" · 约 {0} s", p.remaining_seconds)
               : ""}
           </small>
           <progress max={p.max} value={p.value || 0} />
         </>
       ) : null}
-      <small>
-        排队 {link.status.live.queue?.pending.length || 0} · 已锁定提交快照
-      </small>
+      <small>{tr("排队") + " "}{link.status.live.queue?.pending.length || 0}{" " + tr("· 已锁定提交快照")}</small>
     </>
   );
   return (
     <>
       <button
         className="comfy-progress-button"
-        aria-label={`ComfyUI 生成进度 ${percent} · 点击查看连接与队列`}
+        aria-label={tr("ComfyUI 生成进度 {0} · 点击查看连接与队列", percent)}
         aria-describedby={anchor ? tooltipId : undefined}
         aria-haspopup="dialog"
         onPointerEnter={(e) => {
@@ -2431,7 +2355,7 @@ export function GenerationProgress() {
     <div
       className="generation-progress"
       role="progressbar"
-      aria-label="生成进度"
+      aria-label={tr("生成进度")}
       aria-valuenow={p?.value || 0}
       aria-valuemax={p?.max || 100}
     >
@@ -2481,7 +2405,7 @@ export function ResultFilmstrip() {
     try {
       const result = await rpc<{ cleared: number }>("runs.clear_inactive");
       await link.poll();
-      app.notify(`已从胶片条清除 ${result.cleared} 项，记录与图片保留`);
+      app.notify(tr("已从胶片条清除 {0} 项，记录与图片保留", result.cleared));
     } catch (e) {
       app.reportError(String(e));
     } finally {
@@ -2517,27 +2441,26 @@ export function ResultFilmstrip() {
   if (!link.film)
     return (
       <button className="film-collapsed" onClick={link.toggleFilm}>
-        <Images size={16} />
-        生成结果 · {runs.reduce((n, r) => n + r.outputs.length, 0)}
+        <Images size={16} />{tr("生成结果 ·") + " "}{runs.reduce((n, r) => n + r.outputs.length, 0)}
         <CaretUp size={16} />
       </button>
     );
   return (
     <section
       className="result-filmstrip"
-      aria-label="生成结果胶片条"
+      aria-label={tr("生成结果胶片条")}
       style={{ "--film-requested-height": `${filmHeight}px` } as CSSProperties}
     >
       <div
         className="film-resize-handle"
         role="separator"
-        aria-label="调整结果胶片条高度"
+        aria-label={tr("调整结果胶片条高度")}
         aria-orientation="horizontal"
         aria-valuemin={96}
         aria-valuemax={maximum}
         aria-valuenow={filmHeight}
         tabIndex={0}
-        title="拖动调节胶片条高度 · ↑/↓ 调整 · 双击或 Home 还原"
+        title={tr("拖动调节胶片条高度 · ↑/↓ 调整 · 双击或 Home 还原")}
         onPointerDown={(event) => {
           if (event.button !== 0) return;
           event.preventDefault();
@@ -2577,30 +2500,30 @@ export function ResultFilmstrip() {
       <div className="film-caption">
         <div className="film-summary">
           <div className="film-summary-title">
-            <span>当前项目</span>
+            <span>{tr("当前项目")}</span>
             <IconButton
               icon={Images}
-              label="查看生成记录"
+              label={tr("查看生成记录")}
               onClick={() => app.open("runs")}
             />
           </div>
-          <small>{runs.reduce((n, r) => n + r.outputs.length, 0)} 张结果</small>
+          <small>{runs.reduce((n, r) => n + r.outputs.length, 0)}{" " + tr("张结果")}</small>
         </div>
         <div className="film-actions">
           <IconButton
             icon={Broom}
-            label="清除已取消和生成失败项"
+            label={tr("清除已取消和生成失败项")}
             disabled={clearing || !removable}
             onClick={() => void clearInactive()}
           />
           <IconButton
             icon={CaretDown}
-            label="折叠结果胶片条 · Ctrl+J"
+            label={tr("折叠结果胶片条 · Ctrl+J")}
             onClick={link.toggleFilm}
           />
           <IconButton
             icon={Trash}
-            label="清空等待队列（保留当前任务）"
+            label={tr("清空等待队列（保留当前任务）")}
             disabled={!link.status.live.queue?.pending.length}
             onClick={() => void link.queueAction("clear")}
           />
@@ -2609,7 +2532,7 @@ export function ResultFilmstrip() {
       <div
         className="film-results"
         ref={results}
-        aria-label="按住鼠标左右拖动浏览，松手惯性减速；也可使用滚轮"
+        aria-label={tr("按住鼠标左右拖动浏览，松手惯性减速；也可使用滚轮")}
       >
         {runs
           .slice()
@@ -2632,7 +2555,7 @@ export function ResultFilmstrip() {
                   <button
                     className="film-image-hit"
                     aria-label={
-                      "查看大图 · Seed " + run.snapshot.generation.seed
+                      tr("查看大图 · Seed ") + run.snapshot.generation.seed
                     }
                     onClick={() =>
                       link.inspect(
@@ -2646,7 +2569,7 @@ export function ResultFilmstrip() {
                           ),
                       )
                     }
-                    title="点击查看大图 · 右键打开图片操作菜单"
+                    title={tr("点击查看大图 · 右键打开图片操作菜单")}
                     onContextMenu={(e) => {
                       e.preventDefault();
                       link.imageMenu(run, i, e.clientX, e.clientY);
@@ -2689,7 +2612,7 @@ export function ResultFilmstrip() {
                   )}
                 </span>
                 <div>
-                  <strong>{labels[run.status] || run.status}</strong>
+                  <strong>{tr(labels[run.status] || "") || run.status}</strong>
                   <FilmRunProgress run={run} />
                 </div>
               </button>
@@ -2707,13 +2630,13 @@ function FilmRunProgress({ run }: { run: Run }) {
     <>
       <small>
         {p?.max
-          ? `${p.value || 0} / ${p.max} · 快照已锁定`
-          : run.error || "提示词快照已锁定"}
+          ? tr("{0} / {1} · 快照已锁定", p.value || 0, p.max)
+          : run.error || tr("提示词快照已锁定")}
       </small>
       {!!p?.max && (
         <progress
           className="film-node-progress"
-          aria-label="当前任务节点进度"
+          aria-label={tr("当前任务节点进度")}
           value={p.value || 0}
           max={p.max}
         />

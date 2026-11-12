@@ -1,3 +1,4 @@
+import { tr } from "./i18n";
 import {
   useEffect,
   useRef,
@@ -100,29 +101,27 @@ export function ResultViewport({
   };
   return (
     <div className="result-viewport">
-      <div className="result-viewport-tools" aria-label="图片缩放工具">
-        <button onClick={reset}>适应窗口</button>
-        <button onClick={() => setCamera({ scale: 1, x: 0, y: 0 })}>
-          100% 原始大小
-        </button>
-        <button aria-label="缩小图片" onClick={() => zoom(1 / 1.25)}>
+      <div className="result-viewport-tools" aria-label={tr("图片缩放工具")}>
+        <button onClick={reset}>{tr("适应窗口")}</button>
+        <button onClick={() => setCamera({ scale: 1, x: 0, y: 0 })}>{tr("100% 原始大小")}</button>
+        <button aria-label={tr("缩小图片")} onClick={() => zoom(1 / 1.25)}>
           −
         </button>
-        <output aria-label="图片缩放比例">{Math.round(scale * 100)}%</output>
-        <button aria-label="放大图片" onClick={() => zoom(1.25)}>
+        <output aria-label={tr("图片缩放比例")}>{Math.round(scale * 100)}%</output>
+        <button aria-label={tr("放大图片")} onClick={() => zoom(1.25)}>
           ＋
         </button>
         <span>
           {compare
-            ? "滚轮缩放 · 空格＋拖动平移 · 拖动分界线"
-            : "滚轮缩放 · 拖动平移 · 双击适应窗口"}
+            ? tr("滚轮缩放 · 空格＋拖动平移 · 拖动分界线")
+            : tr("滚轮缩放 · 拖动平移 · 双击适应窗口")}
         </span>
       </div>
       <div
         ref={stage}
         className={`result-viewport-stage ${compare && !space ? "scrub" : "pan"}`}
         tabIndex={0}
-        aria-label={compare ? "对比图片画布" : "大图画布"}
+        aria-label={compare ? tr("对比图片画布") : tr("大图画布")}
         onLoadCapture={(e) => {
           if (e.target instanceof HTMLImageElement && e.target.naturalWidth) {
             // Use decoded pixels, not potentially stale generation settings.

@@ -3703,7 +3703,7 @@ button.primary {
     display: none;
   }
   .statusbar:before {
-    content: "原文与词条上下排列 · 中间分隔条可拖动";
+    content: attr(data-narrow-hint);
     font-size: 11px;
     color: var(--faint);
     line-height: 20px;
@@ -3836,7 +3836,7 @@ button.primary {
   display: none;
 }
 .compact .statusbar:before {
-  content: "解析完成 · 复制全部有效项";
+  content: attr(data-compact-hint);
   font-size: 11px;
   color: var(--faint);
   line-height: 18px;
@@ -3931,17 +3931,17 @@ button.primary {
 .group-form-fields .notice {
   height: 76px;
 }
-.design-modal[aria-label*="收藏"] .field {
+.design-modal[data-favorite-layout] .field {
   margin-bottom: 30px;
 }
-.design-modal[aria-label*="收藏"] textarea {
+.design-modal[data-favorite-layout] textarea {
   height: 96px;
   min-height: 96px;
 }
-.design-modal[aria-label*="收藏"] .field:nth-child(3) {
+.design-modal[data-favorite-layout] .field:nth-child(3) {
   margin-top: 40px;
 }
-.design-modal[aria-label*="收藏"] .modal-body > .hint {
+.design-modal[data-favorite-layout] .modal-body > .hint {
   display: flex;
   min-height: 72px;
   border: 1px solid var(--border);

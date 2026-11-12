@@ -154,6 +154,7 @@ pub struct Settings {
     pub lora_copy_include_extension: bool,
     pub theme_color: String,
     pub theme_mode: String,
+    pub language: LanguagePreference,
     pub font_family: String,
     pub background_image: Option<String>,
     pub background_opacity: f64,
@@ -182,6 +183,7 @@ impl Default for Settings {
             lora_copy_include_extension: false,
             theme_color: "#7163D5".into(),
             theme_mode: "dark".into(),
+            language: LanguagePreference::default(),
             font_family: "".into(),
             background_image: None,
             background_opacity: 0.4,
@@ -198,6 +200,16 @@ impl Default for Settings {
             maximized: false,
         }
     }
+}
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
+pub enum LanguagePreference {
+    #[serde(rename = "zh-CN")]
+    SimplifiedChinese,
+    #[serde(rename = "en")]
+    English,
+    #[default]
+    #[serde(rename = "system", other)]
+    System,
 }
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase", default)]

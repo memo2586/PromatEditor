@@ -1,3 +1,4 @@
+import { tr, trDiagnostic } from "./i18n";
 import { useListMotion } from "./motion";
 import { useState, useEffect, useRef } from "react";
 import {
@@ -84,13 +85,13 @@ export function BridgeInfo({ onClose }: { onClose: () => void }) {
   const [busy, setBusy] = useState(false);
   return (
     <Modal
-      title="ComfyUI 连接详情"
+      title={tr("ComfyUI 连接详情")}
       width={720}
       onClose={onClose}
       footer={
         <>
           <span className="spacer" />
-          <button onClick={onClose}>关闭</button>
+          <button onClick={onClose}>{tr("关闭")}</button>
           <button
             className="primary"
             disabled={busy}
@@ -99,7 +100,7 @@ export function BridgeInfo({ onClose }: { onClose: () => void }) {
               setError("");
               try {
                 await app.act("bridge.config", { url: url.trim() });
-                app.notify("ComfyUI 连接已验证并保存");
+                app.notify(tr("ComfyUI 连接已验证并保存"));
                 onClose();
               } catch (e) {
                 setError(String(e));
@@ -108,49 +109,45 @@ export function BridgeInfo({ onClose }: { onClose: () => void }) {
               }
             }}
           >
-            {busy ? "正在测试连接…" : "测试并保存连接"}
+            {busy ? tr("正在测试连接…") : tr("测试并保存连接")}
           </button>
         </>
       }
     >
       <Notice error={!!app.data.bridge.error}>
         {app.data.bridge.error ||
-          `编辑器接口已启动 · http://127.0.0.1:${app.data.bridge.port}`}
+          tr("编辑器接口已启动 · http://127.0.0.1:{0}", app.data.bridge.port)}
       </Notice>
       <dl className="details-list">
-        <dt>已保存的 ComfyUI 地址</dt>
+        <dt>{tr("已保存的 ComfyUI 地址")}</dt>
         <dd>{app.data.bridge.comfyUrl}</dd>
-        <dt>ComfyUI 连接</dt>
+        <dt>{tr("ComfyUI 连接")}</dt>
         <dd>
           {app.data.bridge.comfyConnected
-            ? "ComfyUI 已连接"
-            : "ComfyUI 尚未连接"}
+            ? tr("ComfyUI 已连接")
+            : tr("ComfyUI 尚未连接")}
         </dd>
-        <dt>工作流状态</dt>
+        <dt>{tr("工作流状态")}</dt>
         <dd>
-          {app.data.bridge.workflowRead ? "工作流已读取" : "工作流尚未读取"}
+          {app.data.bridge.workflowRead ? tr("工作流已读取") : tr("工作流尚未读取")}
         </dd>
-        <dt>接口范围</dt>
-        <dd>仅限本机</dd>
-        <dt>最近实际读取</dt>
-        <dd>{app.data.bridge.lastRead || "尚无读取记录"}</dd>
-        <dt>基础参数</dt>
-        <dd>{app.data.generationError || "当前参数有效"}</dd>
-        <dt>Bridge 协议</dt>
-        <dd>1 / 2 · 生成联动需 Bridge 1.4.0</dd>
+        <dt>{tr("接口范围")}</dt>
+        <dd>{tr("仅限本机")}</dd>
+        <dt>{tr("最近实际读取")}</dt>
+        <dd>{app.data.bridge.lastRead || tr("尚无读取记录")}</dd>
+        <dt>{tr("基础参数")}</dt>
+        <dd>{app.data.generationError ? trDiagnostic(app.data.generationError) : tr("当前参数有效")}</dd>
+        <dt>{tr("Bridge 协议")}</dt>
+        <dd>{tr("1 / 2 · 生成联动需 Bridge 1.4.0")}</dd>
       </dl>
-      <Field label="本机 ComfyUI 地址">
+      <Field label={tr("本机 ComfyUI 地址")}>
         <input
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           placeholder="http://127.0.0.1:8188"
         />
       </Field>
-      <p className="hint">
-        ComfyUI
-        与提示词编辑器应运行在同一台计算机。工作流浏览器提交前读取同一份提示词、参数和模型控制快照；成功入队后才更新种子。
-        测试成功后才保存地址；测试失败时保留原连接配置。
-      </p>
+      <p className="hint">{tr("ComfyUI 与提示词编辑器应运行在同一台计算机。工作流浏览器提交前读取同一份提示词、参数和模型控制快照；成功入队后才更新种子。 测试成功后才保存地址；测试失败时保留原连接配置。")}</p>
       {error && <Notice error>{error}</Notice>}
     </Modal>
   );
@@ -171,18 +168,18 @@ function PresetForm({
   const [error, setError] = useState("");
   return (
     <Modal
-      title="添加尺寸预设"
+      title={tr("添加尺寸预设")}
       width={520}
       onClose={onClose}
       footer={
         <>
           <span className="spacer" />
-          <button onClick={onClose}>取消</button>
+          <button onClick={onClose}>{tr("取消")}</button>
           <button
             className="primary"
             onClick={async () => {
               try {
-                if (!w.trim() || !h.trim()) throw Error("宽高不能为空");
+                if (!w.trim() || !h.trim()) throw Error(tr("宽高不能为空"));
                 await app.act("presets.add", {
                   Name: name,
                   Width: Number(w),
@@ -193,13 +190,11 @@ function PresetForm({
                 setError(String(e));
               }
             }}
-          >
-            保存并应用
-          </button>
+          >{tr("保存并应用")}</button>
         </>
       }
     >
-      <Field label="预设名称（可选）">
+      <Field label={tr("预设名称（可选）")}>
         <input
           autoFocus
           value={name}
@@ -207,14 +202,14 @@ function PresetForm({
         />
       </Field>
       <div className="form-columns">
-        <Field label="宽度">
+        <Field label={tr("宽度")}>
           <input
             type="number"
             value={w}
             onChange={(e) => setW(e.target.value)}
           />
         </Field>
-        <Field label="高度">
+        <Field label={tr("高度")}>
           <input
             type="number"
             value={h}
@@ -222,7 +217,7 @@ function PresetForm({
           />
         </Field>
       </div>
-      <p className="hint">宽高须为 8 的倍数。相同尺寸不会重复添加。</p>
+      <p className="hint">{tr("宽高须为 8 的倍数。相同尺寸不会重复添加。")}</p>
       {error && <Notice error>{error}</Notice>}
     </Modal>
   );
@@ -243,7 +238,7 @@ function WorkflowForm({
   const [error, setError] = useState("");
   const add = () => {
     if (!name.trim()) {
-      setError("分组名称不能为空");
+      setError(tr("分组名称不能为空"));
       return;
     }
     if (
@@ -251,7 +246,7 @@ function WorkflowForm({
         (g) => g.name === name.trim() && g.bypasser_id === bypasser.trim(),
       )
     ) {
-      setError("同一控制器中不能有重名分组");
+      setError(tr("同一控制器中不能有重名分组"));
       return;
     }
     setGroups([
@@ -263,14 +258,14 @@ function WorkflowForm({
   };
   return (
     <Modal
-      title={addOnly ? "添加工作流分组" : "管理工作流分组"}
+      title={addOnly ? tr("添加工作流分组") : tr("管理工作流分组")}
       width={760}
       onClose={onClose}
       footer={
         <>
-          <span className="hint">名称与控制器 ID 共同标识分组</span>
+          <span className="hint">{tr("名称与控制器 ID 共同标识分组")}</span>
           <span className="spacer" />
-          <button onClick={onClose}>取消</button>
+          <button onClick={onClose}>{tr("取消")}</button>
           <button
             className="primary"
             onClick={async () => {
@@ -293,34 +288,32 @@ function WorkflowForm({
                 setError(String(e));
               }
             }}
-          >
-            保存分组
-          </button>
+          >{tr("保存分组")}</button>
         </>
       }
     >
       <div className="form-columns">
-        <Field label="分组名称">
+        <Field label={tr("分组名称")}>
           <input
             value={name}
             autoFocus
             onChange={(e) => setName(e.target.value)}
           />
         </Field>
-        <Field label="控制器 ID（可选）">
+        <Field label={tr("控制器 ID（可选）")}>
           <input
             value={bypasser}
             onChange={(e) => setBypasser(e.target.value)}
           />
         </Field>
-        <IconButton icon={Plus} label="加入分组列表" onClick={add} />
+        <IconButton icon={Plus} label={tr("加入分组列表")} onClick={add} />
       </div>
       {!addOnly && (
         <div className="workflow-manage">
           {groups.map((g, i) => (
             <div key={i} className="workflow-manage-row">
               <input
-                aria-label={`分组 ${i + 1} 名称`}
+                aria-label={tr("分组 {0} 名称", i + 1)}
                 value={g.name}
                 onChange={(e) =>
                   setGroups(
@@ -331,7 +324,7 @@ function WorkflowForm({
                 }
               />
               <input
-                aria-label={`分组 ${i + 1} 控制器 ID`}
+                aria-label={tr("分组 {0} 控制器 ID", i + 1)}
                 value={g.bypasser_id}
                 onChange={(e) =>
                   setGroups(
@@ -343,7 +336,7 @@ function WorkflowForm({
               />
               <Switch
                 checked={g.enabled}
-                label={`启用分组 ${g.name}`}
+                label={tr("启用分组 {0}", g.name)}
                 onChange={(v) =>
                   setGroups(
                     groups.map((g, j) => (i === j ? { ...g, enabled: v } : g)),
@@ -352,7 +345,7 @@ function WorkflowForm({
               />
               <IconButton
                 icon={Trash}
-                label={`删除分组 ${g.name}`}
+                label={tr("删除分组 {0}", g.name)}
                 onClick={() => setGroups(groups.filter((_, j) => j !== i))}
               />
             </div>
@@ -472,7 +465,7 @@ export function GenerationPage() {
     app.draftGuards.current.set("generation", async () => {
       if (!error) return true;
       app.open("generation");
-      app.notify("请先修正生成参数草稿，再关闭或切换项目");
+      app.notify(tr("请先修正生成参数草稿，再关闭或切换项目"));
       return false;
     });
     return () => {
@@ -527,18 +520,15 @@ export function GenerationPage() {
       if (kind === "groups") {
         const next = catalog.groups;
         if (!Array.isArray(next) || !next.length) {
-          app.notify("没有读取到工作流分组，当前列表已保留");
+          app.notify(tr("没有读取到工作流分组，当前列表已保留"));
           return;
         }
         const answer = await app.confirm({
-          title: "替换工作流分组？",
+          title: tr("替换工作流分组？"),
           body: (
-            <p>
-              将用读取到的 {next.length} 个分组替换当前 {g.groups.length}{" "}
-              个分组。原开关状态会按名称和控制器 ID 尽量保留。
-            </p>
+            <p>{tr("将用读取到的 {0} 个分组替换当前 {1} 个分组。原开关状态会按名称和控制器 ID 尽量保留。", next.length, g.groups.length)}</p>
           ),
-          confirm: "替换分组",
+          confirm: tr("替换分组"),
         });
         if (answer === "confirm") {
           const groups = next.map((x: any) => ({
@@ -555,7 +545,7 @@ export function GenerationPage() {
         }
       }
     } catch (e) {
-      app.reportError(`${e}；当前设置已保留`);
+      app.reportError(tr("{0}；当前设置已保留", e));
     } finally {
       setBusy("");
     }
@@ -567,18 +557,18 @@ export function GenerationPage() {
   return (
     <div className="standard-page">
       <PageHeading
-        title="生成参数"
-        description="参数独立保存，ComfyUI 提交任务时读取当前有效值。"
-        status={error ? "草稿无效 · 暂停同步" : "参数已自动保存"}
+        title={tr("生成参数")}
+        description={tr("参数独立保存，ComfyUI 提交任务时读取当前有效值。")}
+        status={error ? tr("草稿无效 · 暂停同步") : tr("参数已自动保存")}
         actions={
           <>
             <IconButton
               icon={ArrowsClockwise}
-              label="刷新采样器"
+              label={tr("刷新采样器")} data-refresh-shortcut
               disabled={!!busy}
               onClick={() => void read("samplers")}
             />
-            <IconButton icon={Info} label="ComfyUI 连接详情" onClick={bridge} />
+            <IconButton icon={Info} label={tr("ComfyUI 连接详情")} onClick={bridge} />
             <GenerateButton />
           </>
         }
@@ -586,14 +576,14 @@ export function GenerationPage() {
       <div className="generation-layout">
         <div className="generation-left">
           <Panel
-            title="基础参数"
+            title={tr("基础参数")}
             className="parameters-panel"
             actions={
               <>
-                <span className="hint">提交时同步给种子</span>
+                <span className="hint">{tr("提交时同步给种子")}</span>
                 <Switch
                   checked={g.enabled}
-                  label="提交时同步基础参数"
+                  label={tr("提交时同步基础参数")}
                   onChange={(v) => void update({ enabled: v })}
                 />
               </>
@@ -601,7 +591,7 @@ export function GenerationPage() {
           >
             <div className="parameter-section seed-section">
               <div className="seed-input">
-                <Field label="当前种子 · Seed">
+                <Field label={tr("当前种子 · Seed")}>
                   <div className="input-action">
                     <input
                       className="mono"
@@ -613,7 +603,7 @@ export function GenerationPage() {
                     />
                     <IconButton
                       icon={DiceFive}
-                      label="立即随机种子"
+                      label={tr("立即随机种子")}
                       disabled={!!error}
                       onClick={() =>
                         void app
@@ -624,22 +614,22 @@ export function GenerationPage() {
                   </div>
                 </Field>
               </div>
-              <Field label="生成后控制">
+              <Field label={tr("生成后控制")}>
                 <select
                   value={g.seed_control}
                   onChange={(e) =>
                     void update({ seed_control: e.target.value })
                   }
                 >
-                  <option value="fixed">固定</option>
-                  <option value="increment">递增</option>
-                  <option value="decrement">递减</option>
-                  <option value="randomize">每次随机</option>
+                  <option value="fixed">{tr("固定")}</option>
+                  <option value="increment">{tr("递增")}</option>
+                  <option value="decrement">{tr("递减")}</option>
+                  <option value="randomize">{tr("每次随机")}</option>
                 </select>
               </Field>
             </div>
             <div className="parameter-section sampling-section">
-              <Field label="采样器 · Sampler">
+              <Field label={tr("采样器 · Sampler")}>
                 <div className="input-action">
                   <select
                     value={g.sampler}
@@ -651,17 +641,17 @@ export function GenerationPage() {
                   </select>
                   <IconButton
                     icon={ArrowsClockwise}
-                    label="刷新采样器列表"
+                    label={tr("刷新采样器列表")}
                     disabled={!!busy}
                     onClick={() => void read("samplers")}
                   />
                 </div>
               </Field>
-              {numeric("steps", "步数 · Steps", 1, 10000)}
-              {numeric("cfg", "提示词引导 · CFG", 0, 100, 0.1)}
+              {numeric("steps", tr("步数 · Steps"), 1, 10000)}
+              {numeric("cfg", tr("提示词引导 · CFG"), 0, 100, 0.1)}
             </div>
             <div className="parameter-section size-section">
-              <Field label="尺寸预设">
+              <Field label={tr("尺寸预设")}>
                 <div className="input-action">
                   <select
                     value={`${g.width}x${g.height}`}
@@ -673,8 +663,7 @@ export function GenerationPage() {
                     {!app.data.presets.some(
                       (p) => p.Width === g.width && p.Height === g.height,
                     ) && (
-                      <option value={`${g.width}x${g.height}`}>
-                        自定义 · {g.width} × {g.height}
+                      <option value={`${g.width}x${g.height}`}>{tr("自定义 ·") + " "}{g.width} × {g.height}
                       </option>
                     )}
                     {app.data.presets.map((p) => (
@@ -691,7 +680,7 @@ export function GenerationPage() {
                   </select>
                   <IconButton
                     icon={Plus}
-                    label="添加当前尺寸为自定义预设"
+                    label={tr("添加当前尺寸为自定义预设")}
                     onClick={() =>
                       app.modal(
                         <PresetForm
@@ -705,16 +694,16 @@ export function GenerationPage() {
                 </div>
               </Field>
               <div className="dimensions-row">
-                {numeric("width", "宽度 · Width", 16, 16384, 8)}
+                {numeric("width", tr("宽度 · Width"), 16, 16384, 8)}
                 <IconButton
                   icon={ArrowsLeftRight}
-                  label="交换宽高"
+                  label={tr("交换宽高")}
                   onClick={() =>
                     void update({ width: g.height, height: g.width })
                   }
                 />
-                {numeric("height", "高度 · Height", 16, 16384, 8)}
-                {numeric("batch_size", "每批张数", 1, 4096)}
+                {numeric("height", tr("高度 · Height"), 16, 16384, 8)}
+                {numeric("batch_size", tr("每批张数"), 1, 4096)}
               </div>
               {error && (
                 <>
@@ -745,21 +734,19 @@ export function GenerationPage() {
                         void reportInvalid("base", "");
                         void update({ width, height });
                       }}
-                    >
-                      将宽高修正为最接近的 8 的倍数
-                    </button>
+                    >{tr("将宽高修正为最接近的 8 的倍数")}</button>
                   )}
                 </>
               )}
             </div>
           </Panel>
           <Panel
-            title="连接与读取"
+            title={tr("连接与读取")}
             className="connection-panel"
             actions={
               <IconButton
                 icon={ArrowUpRight}
-                label="打开连接详情"
+                label={tr("打开连接详情")}
                 onClick={bridge}
               />
             }
@@ -772,42 +759,39 @@ export function GenerationPage() {
                   }
                 />
                 {app.data.bridge.error ||
-                  `编辑器接口已启动 · 127.0.0.1:${app.data.bridge.port}`}
+                  tr("编辑器接口已启动 · 127.0.0.1:{0}", app.data.bridge.port)}
               </p>
               <p className="hint">
                 {app.data.bridge.comfyUrl} ·{" "}
                 {app.data.bridge.comfyConnected
-                  ? "ComfyUI 已连接"
-                  : "ComfyUI 尚未连接"}{" "}
+                  ? tr("ComfyUI 已连接")
+                  : tr("ComfyUI 尚未连接")}{" "}
                 ·{" "}
                 {app.data.bridge.workflowRead
-                  ? "工作流已读取"
-                  : "工作流尚未读取"}
+                  ? tr("工作流已读取")
+                  : tr("工作流尚未读取")}
               </p>
-              <p className="hint">
-                最近读取 {app.data.bridge.lastRead || "尚无记录"} ·{" "}
-                {app.data.generationError || "生成参数有效"}
+              <p className="hint">{tr("最近读取") + " "}{app.data.bridge.lastRead || tr("尚无记录")} ·{" "}
+                {app.data.generationError ? trDiagnostic(app.data.generationError) : tr("生成参数有效")}
               </p>
-              <p className="hint">
-                入队成功后更新下一个种子；当前读取使用提交时的同一份快照。
-              </p>
+              <p className="hint">{tr("入队成功后更新下一个种子；当前读取使用提交时的同一份快照。")}</p>
             </div>
           </Panel>
         </div>
         <Panel
-          title="工作流分组"
+          title={tr("工作流分组")}
           className="workflow-panel"
           actions={
             <>
               <IconButton
                 icon={ArrowsClockwise}
-                label="读取工作流分组"
+                label={tr("读取工作流分组")}
                 disabled={!!busy}
                 onClick={() => void read("groups")}
               />
               <IconButton
                 icon={Plus}
-                label="手动添加工作流分组"
+                label={tr("手动添加工作流分组")}
                 onClick={() =>
                   app.modal(
                     <WorkflowForm addOnly onClose={() => app.modal(null)} />,
@@ -816,7 +800,7 @@ export function GenerationPage() {
               />
               <IconButton
                 icon={PencilSimple}
-                label="管理工作流分组"
+                label={tr("管理工作流分组")}
                 onClick={() =>
                   app.modal(<WorkflowForm onClose={() => app.modal(null)} />)
                 }
@@ -826,8 +810,8 @@ export function GenerationPage() {
         >
           <p className="workflow-summary">
             {busy === "groups"
-              ? "正在读取工作流分组…"
-              : `${enabled} 启用 · ${g.groups.length - enabled} 旁路`}
+              ? tr("正在读取工作流分组…")
+              : tr("{0} 启用 · {1} 旁路", enabled, g.groups.length - enabled)}
           </p>
           <div className="workflow-list">
             {g.groups.map((group, i) => (
@@ -841,10 +825,10 @@ export function GenerationPage() {
                 >
                   {group.name}
                 </span>
-                <small>{group.enabled ? "启用" : "旁路"}</small>
+                <small>{group.enabled ? tr("启用") : tr("旁路")}</small>
                 <Switch
                   checked={group.enabled}
-                  label={`工作流分组 ${group.name}`}
+                  label={tr("工作流分组 {0}", group.name)}
                   onChange={(v) =>
                     void update({
                       groups: g.groups.map((x, j) =>
@@ -857,12 +841,12 @@ export function GenerationPage() {
             ))}
             {!g.groups.length && (
               <Empty
-                title="暂无工作流分组"
-                description="从 ComfyUI 读取，或手动添加分组。"
+                title={tr("暂无工作流分组")}
+                description={tr("从 ComfyUI 读取，或手动添加分组。")}
               />
             )}
           </div>
-          <footer className="panel-footer hint">仅影响匹配的工作流分组</footer>
+          <footer className="panel-footer hint">{tr("仅影响匹配的工作流分组")}</footer>
         </Panel>
       </div>
     </div>
@@ -955,11 +939,11 @@ export function ModelsPage() {
       await Promise.allSettled([...pendingWrites.current]);
       if (!draftErrors.has("models")) return true;
       const answer = await app.confirm({
-        title: "模型控制草稿无效",
-        body: <p>请返回编辑修正字段，或放弃尚未自动保存的模型控制修改。</p>,
-        confirm: "返回编辑",
-        cancel: "取消",
-        third: "放弃未保存的修改",
+        title: tr("模型控制草稿无效"),
+        body: <p>{tr("请返回编辑修正字段，或放弃尚未自动保存的模型控制修改。")}</p>,
+        confirm: tr("返回编辑"),
+        cancel: tr("取消"),
+        third: tr("放弃未保存的修改"),
       });
       if (answer === "third") {
         await discard();
@@ -1006,7 +990,7 @@ export function ModelsPage() {
         c.enabled &&
         (!c.node_id || !c.node_type || (kind !== "lora" && !c.model))
       )
-        invalid ||= `请选择 ${kind.toUpperCase()} 的有效目标节点及模型`;
+        invalid ||= tr("请选择 {0} 的有效目标节点及模型", kind.toUpperCase());
     }
     if (invalid) {
       setError(invalid);
@@ -1056,7 +1040,7 @@ export function ModelsPage() {
       const value = await app.act<Catalog>("bridge.models");
       setCatalog(value);
       if (!value.nodes.length)
-        app.notify("没有读取到工作流目标节点；当前模型控制已保留");
+        app.notify(tr("没有读取到工作流目标节点；当前模型控制已保留"));
     } catch (e) {
       app.reportError(String(e));
     } finally {
@@ -1073,7 +1057,7 @@ export function ModelsPage() {
           : ["VAELoader"];
     const nodes = catalog.nodes.filter((n) => types.includes(n.node_type));
     return (
-      <Field label="目标节点">
+      <Field label={tr("目标节点")}>
         <select
           value={c.node_id}
           onChange={(e) => {
@@ -1084,11 +1068,10 @@ export function ModelsPage() {
             });
           }}
         >
-          <option value="">请选择目标节点</option>
+          <option value="">{tr("请选择目标节点")}</option>
           {c.node_id && !nodes.some((n) => n.node_id === c.node_id) && (
             <option value={c.node_id}>
-              #{c.node_id} · {c.node_type}（尚未读取）
-            </option>
+              #{c.node_id} · {c.node_type}{tr("（尚未读取）")}</option>
           )}
           {nodes.map((n) => (
             <option key={n.node_id} value={n.node_id}>
@@ -1107,7 +1090,7 @@ export function ModelsPage() {
       n = n.replace(/\.[^.]+$/, "");
     void navigator.clipboard
       .writeText(n)
-      .then(() => app.notify("模型名称已复制"));
+      .then(() => app.notify(tr("模型名称已复制")));
   };
   const reorder = (i: number, j: number) => {
     const loras = [...modelsRef.current.lora.loras];
@@ -1124,14 +1107,14 @@ export function ModelsPage() {
         : catalog.vaes;
     return (
       <Panel
-        title={kind === "unet" ? "UNet 加载器" : "VAE 加载器"}
+        title={kind === "unet" ? tr("UNet 加载器") : tr("VAE 加载器")}
         className={`${kind}-panel`}
         actions={
           <>
-            <span className="hint">控制此节点</span>
+            <span className="hint">{tr("控制此节点")}</span>
             <Switch
               checked={c.enabled}
-              label={`控制 ${kind.toUpperCase()} 节点`}
+              label={tr("控制 {0} 节点", kind.toUpperCase())}
               onChange={(v) => void update(kind, { enabled: v })}
             />
           </>
@@ -1139,12 +1122,12 @@ export function ModelsPage() {
       >
         <div className="loader-body">
           {target(kind)}
-          <Field label={kind === "unet" ? "模型 · UNet" : "模型 · VAE"}>
-            <ModelPicker label={`搜索或选择 ${kind === "unet" ? "UNet" : "VAE"}`} listLabel={`可选 ${kind === "unet" ? "UNet" : "VAE"}`} modelType={kind === "unet" ? "UNet" : "VAE"}
+          <Field label={kind === "unet" ? tr("模型 · UNet") : tr("模型 · VAE")}>
+            <ModelPicker label={tr("搜索或选择 {0}", kind === "unet" ? "UNet" : "VAE")} listLabel={tr("可选 {0}", kind === "unet" ? "UNet" : "VAE")} modelType={kind === "unet" ? "UNet" : "VAE"}
               options={choices} value={c.model} onChange={(model) => void update(kind, { model })} />
           </Field>
           {kind === "unet" && (
-            <Field label="权重精度 · Weight dtype">
+            <Field label={tr("权重精度 · Weight dtype")}>
               <select
                 value={c.weight_dtype}
                 onChange={(e) =>
@@ -1166,26 +1149,26 @@ export function ModelsPage() {
   return (
     <div className="standard-page">
       <PageHeading
-        title="模型控制"
-        description="三个控制器独立开关；关闭时保留草稿并沿用工作流原设置。"
+        title={tr("模型控制")}
+        description={tr("三个控制器独立开关；关闭时保留草稿并沿用工作流原设置。")}
         status={
           busy
-            ? "正在读取节点与模型…"
+            ? tr("正在读取节点与模型…")
             : error
-              ? "模型控制草稿无效"
-              : "模型控制已自动保存"
+              ? tr("模型控制草稿无效")
+              : tr("模型控制已自动保存")
         }
         actions={
           <>
             <IconButton
               icon={ArrowsClockwise}
-              label="读取节点与模型"
+              label={tr("读取节点与模型")} data-refresh-shortcut
               disabled={busy}
               onClick={read}
             />
             <IconButton
               icon={Info}
-              label="ComfyUI 连接详情"
+              label={tr("ComfyUI 连接详情")}
               onClick={() =>
                 app.modal(<BridgeInfo onClose={() => app.modal(null)} />)
               }
@@ -1200,10 +1183,10 @@ export function ModelsPage() {
           className="lora-controller"
           actions={
             <>
-              <span className="hint">控制此节点</span>
+              <span className="hint">{tr("控制此节点")}</span>
               <Switch
                 checked={models.lora.enabled}
-                label="控制 LoRA Manager 节点"
+                label={tr("控制 LoRA Manager 节点")}
                 onChange={(v) => void update("lora", { enabled: v })}
               />
             </>
@@ -1213,26 +1196,25 @@ export function ModelsPage() {
             {target("lora")}
             <IconButton
               icon={Stack}
-              label="浏览 LoRA 模型库"
+              label={tr("浏览 LoRA 模型库")}
               onClick={() => app.open("lora")}
             />
           </div>
           <div className="controller-toolbar">
-            <span className="hint">
-              提交时替换此节点的 LoRA 列表，关闭的条目仍保留。
-            </span>
+            <span className="hint">{tr("提交时替换此节点的 LoRA 列表，关闭的条目仍保留。")}</span>
             <input
-              aria-label="搜索已添加 LoRA"
-              placeholder="搜索已添加 LoRA…"
+              aria-label={tr("搜索已添加 LoRA")}
+              data-workspace-search
+              placeholder={tr("搜索已添加 LoRA…")}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
           <div className="controller-columns">
-            <span>LoRA 模型</span>
+            <span>{tr("LoRA 模型")}</span>
             <span>Model</span>
             <span>CLIP</span>
-            <span>启用</span>
+            <span>{tr("启用")}</span>
             <span />
           </div>
           <div ref={listMotionRef} className="controller-list">
@@ -1246,13 +1228,13 @@ export function ModelsPage() {
                       </span>
                       <IconButton
                         icon={Copy}
-                        label={`复制模型名称 ${l.name}`}
+                        label={tr("复制模型名称 {0}", l.name)}
                         onClick={() => nameCopy(l.name)}
                       />
                     </div>
                     {(["strength", "clipStrength"] as const).map((k) => (
                       <input
-                        aria-label={`${l.name} ${k === "strength" ? "Model" : "CLIP"} 强度`}
+                        aria-label={tr("{0} {1} 强度", l.name, k === "strength" ? "Model" : "CLIP")}
                         className="mono"
                         key={k}
                         type="number"
@@ -1278,12 +1260,12 @@ export function ModelsPage() {
                           ) {
                             strengthErrors.current.set(
                               `${l.draftId}:${k}`,
-                              "LoRA 强度须为 −20 至 20",
+                              tr("LoRA 强度须为 −20 至 20"),
                             );
-                            setError("LoRA 强度须为 −20 至 20");
+                            setError(tr("LoRA 强度须为 −20 至 20"));
                             void reportInvalid(
                               "models",
-                              "LoRA 强度须为 −20 至 20",
+                              tr("LoRA 强度须为 −20 至 20"),
                             );
                           } else {
                             strengthErrors.current.delete(`${l.draftId}:${k}`);
@@ -1300,7 +1282,7 @@ export function ModelsPage() {
                     ))}
                     <Switch
                       checked={l.active}
-                      label={`启用 LoRA ${l.name}`}
+                      label={tr("启用 LoRA {0}", l.name)}
                       onChange={(v) =>
                         void update("lora", {
                           loras: modelsRef.current.lora.loras.map((x) =>
@@ -1312,19 +1294,19 @@ export function ModelsPage() {
                     <div className="inline-actions">
                       <IconButton
                         icon={ArrowUp}
-                        label={`上移 ${l.name}`}
+                        label={tr("上移 {0}", l.name)}
                         disabled={i === 0}
                         onClick={() => reorder(i, i - 1)}
                       />
                       <IconButton
                         icon={ArrowDown}
-                        label={`下移 ${l.name}`}
+                        label={tr("下移 {0}", l.name)}
                         disabled={i === models.lora.loras.length - 1}
                         onClick={() => reorder(i, i + 1)}
                       />
                       <IconButton
                         icon={Trash}
-                        label={`移除 ${l.name}`}
+                        label={tr("移除 {0}", l.name)}
                         onClick={() =>
                           void update("lora", {
                             loras: modelsRef.current.lora.loras.filter(
@@ -1339,8 +1321,8 @@ export function ModelsPage() {
             )}
             {!models.lora.loras.length && (
               <Empty
-                title="尚未添加 LoRA"
-                description="读取节点与模型后，从列表选择模型，或浏览 LoRA 模型库。"
+                title={tr("尚未添加 LoRA")}
+                description={tr("读取节点与模型后，从列表选择模型，或浏览 LoRA 模型库。")}
               />
             )}
           </div>
@@ -1348,7 +1330,7 @@ export function ModelsPage() {
             <ModelPicker value={picker} options={catalog.loras} onChange={setPicker} />
             <IconButton
               icon={Plus}
-              label="添加 LoRA"
+              label={tr("添加 LoRA")}
               disabled={!catalog.loras.includes(picker)}
               onClick={() => {
                 void update("lora", {
@@ -1367,13 +1349,12 @@ export function ModelsPage() {
             />
           </div>
           <p className="controller-count hint">
-            {models.lora.loras.length} 个 LoRA ·{" "}
-            {models.lora.loras.filter((l) => l.active).length} 个启用
-          </p>
+            {models.lora.loras.length}{" " + tr("个 LoRA ·")}{" "}
+            {models.lora.loras.filter((l) => l.active).length}{" " + tr("个启用")}</p>
           {error && (
             <Notice error>
               <p>{error}</p>
-              <button onClick={() => void discard()}>放弃未保存的修改</button>
+              <button onClick={() => void discard()}>{tr("放弃未保存的修改")}</button>
             </Notice>
           )}
         </Panel>
@@ -1382,9 +1363,7 @@ export function ModelsPage() {
           {loader("vae")}
         </div>
         <div className="model-notice">
-          <Notice>
-            模型资料与控制器分别保存；添加模型前需核对 ComfyUI 标识。
-          </Notice>
+          <Notice>{tr("模型资料与控制器分别保存；添加模型前需核对 ComfyUI 标识。")}</Notice>
         </div>
       </div>
     </div>

@@ -1,3 +1,4 @@
+import { tr } from "./i18n";
 import {
   useLayoutEffect,
   useRef,
@@ -155,7 +156,7 @@ export function usePromptCompletion(
         ref={popupRef}
         className={`completion ${modal ? "modal-completion" : ""}`}
         role="listbox"
-        aria-label="光标补全候选"
+        aria-label={tr("光标补全候选")}
         onMouseDown={(event) => event.preventDefault()}
       >
         {completion.items.map((item, index) => (
@@ -175,7 +176,7 @@ export function usePromptCompletion(
             </small>
           </div>
         ))}
-        <p>Tab 补全 · 双击插入 · Esc 关闭</p>
+        <p>{tr("Tab 补全 · 双击插入 · Esc 关闭")}</p>
       </div>,
       document.body,
     );

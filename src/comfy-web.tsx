@@ -1,3 +1,4 @@
+import { tr } from "./i18n";
 import { useState } from "react";
 import { isTauri } from "@tauri-apps/api/core";
 import { ComfyNativeView } from "./comfy-native-view";
@@ -23,7 +24,7 @@ export function ComfyWebLauncher() {
       }
     >
       <Browser size={16} />
-      <span>ComfyUI 网页</span>
+      <span>{tr("ComfyUI 网页")}</span>
     </button>
   );
 }
@@ -40,19 +41,19 @@ export function ComfyWebPage() {
         <span title={url}>{url}</span>
         <IconButton
           icon={ArrowsClockwise}
-          label="重新加载 ComfyUI 网页"
+          label={tr("重新加载 ComfyUI 网页")}
           onClick={() => setRevision((v) => v + 1)}
         />
         <IconButton
           icon={ArrowSquareOut}
-          label="在默认浏览器打开 ComfyUI"
+          label={tr("在默认浏览器打开 ComfyUI")}
           onClick={() =>
             void openExternal(url).catch((e) => app.reportError(String(e)))
           }
         />
         <IconButton
           icon={Gear}
-          label="ComfyUI 网页设置"
+          label={tr("ComfyUI 网页设置")}
           onClick={() => openComfySettings(app)}
         />
       </header>
@@ -66,13 +67,11 @@ export function ComfyWebPage() {
         <iframe
           key={`${url}/${revision}`}
           src={url}
-          title="ComfyUI 工作流网页"
+          title={tr("ComfyUI 工作流网页")}
           allow="clipboard-read; clipboard-write; fullscreen"
         />
       )}
-      <p>
-        页面无法显示时，请确认服务已启动，然后重新加载；也可在默认浏览器打开。
-      </p>
+      <p>{tr("页面无法显示时，请确认服务已启动，然后重新加载；也可在默认浏览器打开。")}</p>
     </div>
   );
 }
