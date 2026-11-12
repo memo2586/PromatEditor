@@ -126,6 +126,49 @@ export function useTooltip(content: ReactNode) {
       ),
   };
 }
+export function PageLabelButton({
+  label,
+  shortLabel = label,
+  icon,
+  count,
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  label: string;
+  shortLabel?: string;
+  icon: ReactNode;
+  count?: number;
+}) {
+  const text = useRef<HTMLSpanElement>(null);
+  const tip = useTooltip(label);
+  const needsTooltip = () => {
+    const node = text.current;
+    return label !== shortLabel || !node?.offsetWidth || node.scrollWidth > node.clientWidth;
+  };
+  return (
+    <>
+      <button
+        type="button"
+        {...props}
+        aria-label={label}
+        aria-describedby={tip.describedBy}
+        onPointerEnter={(event) => { if (needsTooltip()) tip.show(event); }}
+        onPointerLeave={tip.leave}
+        onFocus={(event) => { if (needsTooltip()) tip.focus(event); }}
+        onBlur={tip.hide}
+        onClick={(event) => {
+          tip.hide();
+          props.onClick?.(event);
+        }}
+      >
+        {icon}
+        <span className="page-button-label" ref={text}>{shortLabel}</span>
+        {count != null && <small>{count}</small>}
+      </button>
+      {tip.tooltip}
+    </>
+  );
+}
+
 export function IconButton({
   icon: Icon,
   label,

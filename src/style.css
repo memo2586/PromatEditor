@@ -353,13 +353,18 @@ button.primary {
   min-width: 0;
   flex: 1;
 }
-.project-button strong {
-  font-size: 14px;
+.project-button strong,
+.project-button small,
+.page-button-label {
+  min-width: 0;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.project-button strong {
+  font-size: 14px;
+}
 .project-button small {
-  white-space: nowrap;
   margin-top: 2px;
   color: var(--muted);
 }
@@ -398,6 +403,14 @@ button.primary {
 }
 .nav-item small {
   margin-left: auto;
+}
+.page-button-label {
+  text-align: left;
+}
+.nav-item > :is(svg, small),
+.tab > button > :is(svg, small),
+.tab .icon-button {
+  flex-shrink: 0;
 }
 .sidebar-bottom {
   flex-shrink: 0;
@@ -499,6 +512,7 @@ button.primary {
   position: relative;
   flex-shrink: 0;
   min-width: 164px;
+  max-width: 208px;
   gap: 0;
 }
 .tab.active:after {
@@ -514,6 +528,9 @@ button.primary {
   background: var(--panel);
 }
 .tab > button:first-child {
+  flex: 1;
+  min-width: 0;
+  justify-content: flex-start;
   height: 43px;
   min-height: 43px;
   border: 0;
@@ -524,9 +541,6 @@ button.primary {
 }
 .tab.active > button:first-child {
   color: var(--text);
-}
-.tab > button > small {
-  margin-left: 36px;
 }
 .tab .icon-button {
   border: 0;
@@ -567,16 +581,43 @@ button.primary {
 }
 .statusbar > svg {
   color: var(--success);
+  flex-shrink: 0;
 }
-.lexicon-status {
-  margin-left: 62px;
-  color: var(--faint);
+.statusbar > span:not(.spacer, .lexicon-status-action) {
+  min-width: 0;
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
 }
-.statusbar > span:last-child {
+.card-save-status {
+  flex-shrink: 0;
+  max-width: 58%;
+}
+.lexicon-status {
+  margin-left: 16px;
+}
+.lexicon-status,
+.statusbar-shortcut {
   color: var(--faint);
+}
+.lexicon-status-action {
+  display: none;
+}
+.lexicon-status-action .icon-button {
+  width: 24px;
+  height: 22px;
+  min-height: 22px;
+  padding: 0;
+  border: 0;
+}
+@media (max-width: 1100px) {
+  .statusbar .lexicon-status,
+  .statusbar .statusbar-shortcut {
+    display: none;
+  }
+  .lexicon-status-action {
+    display: inline-flex;
+  }
 }
 .sidebar-collapsed {
   grid-template-columns: 1fr;
@@ -1008,27 +1049,36 @@ button.primary {
 }
 .terms-heading {
   min-height: 47px;
-  height: 47px;
-  display: flex;
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) fit-content(52%) auto;
   align-items: center;
-  padding: 0 16px;
+  padding: 6px 16px;
   gap: 8px;
   border-bottom: 1px solid var(--border);
   font-size: 13px;
 }
-.terms-heading > .segments {
-  position: absolute;
-  left: calc(50% + 208px);
-  transform: translateX(-50%);
-  width: 158px;
+.terms-heading-label {
+  overflow-wrap: anywhere;
+}
+.terms-heading-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.terms-panel .segments > button {
+  height: auto;
+  padding: 3px 8px;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .term-filter-row {
   display: grid;
   grid-template-columns: minmax(160px, 1.13fr) minmax(230px, 1fr) auto;
   gap: 12px;
   padding: 8px 16px;
-  height: 48px;
   min-height: 48px;
+  flex-shrink: 0;
 }
 .search-input {
   display: flex;
@@ -1076,9 +1126,6 @@ button.primary {
 .duplicates-button:disabled {
   opacity: 1;
   color: var(--faint);
-}
-.term-filter-row .segments button {
-  padding: 0 8px;
 }
 .term-column-labels,
 .term-row,
@@ -1832,6 +1879,13 @@ button.primary {
   font-size: 13px;
   margin-bottom: 4px;
 }
+.settings-nav nav > button {
+  height: auto;
+  padding-block: 6px;
+  white-space: normal;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
 .resource-categories nav > button small {
   margin-left: auto;
   font-size: 11px;
@@ -2401,6 +2455,13 @@ button.primary {
 .setting-row p {
   margin-top: 8px;
 }
+.setting-row > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.setting-row > .switch {
+  flex-shrink: 0;
+}
 .setting-row + .field {
   margin-top: 24px;
 }
@@ -2505,12 +2566,12 @@ button.primary {
   min-height: 0;
 }
 .modal > header {
-  height: 52px;
   min-height: 52px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 0 16px;
+  padding: 8px 16px;
   border-bottom: 1px solid var(--border);
   background: var(--panel);
 }
@@ -2519,10 +2580,13 @@ button.primary {
 }
 .modal > header > strong {
   flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-size: 14px;
   font-weight: 500;
 }
 .modal > header > .icon-button {
+  flex-shrink: 0;
   border: 0;
   background: none;
 }
@@ -2531,6 +2595,7 @@ button.primary {
   overflow: auto;
   min-height: 0;
   color: var(--muted);
+  overflow-wrap: anywhere;
 }
 .modal-body > p {
   line-height: 1.8;
@@ -2543,11 +2608,12 @@ button.primary {
   line-height: 2;
 }
 .modal > footer {
-  height: 64px;
   min-height: 64px;
+  flex-shrink: 0;
   border-top: 1px solid var(--border);
   padding: 16px 24px;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   color: var(--muted);
@@ -2558,6 +2624,12 @@ button.primary {
   height: 32px;
   padding: 4px 16px;
   font-size: 13px;
+}
+.modal footer button:not(.icon-button) {
+  height: auto;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .modal footer .icon-button {
   padding: 0;
@@ -2755,15 +2827,6 @@ button.primary {
   }
 }
 @media (max-width: 1350px) {
-  .terms-heading > .segments {
-    position: static;
-    left: auto;
-    transform: none;
-    margin-left: auto;
-  }
-  .terms-heading > .spacer {
-    flex: 0;
-  }
   .term-filter-row {
     grid-template-columns: minmax(140px, 1fr) minmax(200px, 1fr);
   }
@@ -3215,9 +3278,6 @@ button.primary {
   .lexicon-metrics {
     gap: 35px;
   }
-  .statusbar > span:last-child {
-    display: none;
-  }
   .diff-table {
     overflow: auto;
   }
@@ -3275,7 +3335,7 @@ button.primary {
     width: 30px;
   }
   .terms-heading {
-    padding: 0 12px;
+    padding-inline: 12px;
   }
   .term-filter-row {
     padding-left: 12px;
@@ -3496,9 +3556,6 @@ button.primary {
     right: 40px;
     width: 64px;
   }
-  .terms-heading > .segments {
-    left: calc(50% + 248px);
-  }
   .term-filter-row {
     grid-template-columns: minmax(160px, 393fr) minmax(230px, 348fr) 127px;
   }
@@ -3693,26 +3750,6 @@ button.primary {
   .page-heading > .page-status {
     display: none;
   }
-  .statusbar {
-    border: 0;
-    background: transparent;
-    padding: 0 24px;
-    align-items: flex-start;
-  }
-  .statusbar > * {
-    display: none;
-  }
-  .statusbar:before {
-    content: attr(data-narrow-hint);
-    font-size: 11px;
-    color: var(--faint);
-    line-height: 20px;
-  }
-  .terms-heading > .segments {
-    position: static;
-    transform: none;
-    margin-left: auto;
-  }
   .term-count {
     display: block;
   }
@@ -3830,16 +3867,13 @@ button.primary {
   border: 0;
   background: transparent;
   padding: 0 16px;
-  align-items: flex-end;
 }
-.compact .statusbar > * {
+.compact .statusbar .lexicon-status,
+.compact .statusbar .statusbar-shortcut {
   display: none;
 }
-.compact .statusbar:before {
-  content: attr(data-compact-hint);
-  font-size: 11px;
-  color: var(--faint);
-  line-height: 18px;
+.compact .lexicon-status-action {
+  display: inline-flex;
 }
 .compact .selection-toolbar {
   padding: 0 15px;
@@ -3864,7 +3898,6 @@ button.primary {
   position: relative;
 }
 .design-modal > header {
-  height: 64px;
   min-height: 64px;
   border: 0;
   background: none;
@@ -3877,20 +3910,20 @@ button.primary {
   line-height: 32px;
 }
 .design-modal .modal-subtitle {
-  height: 48px;
   min-height: 48px;
+  flex-shrink: 0;
   margin: 0;
-  padding: 0 24px;
+  padding: 0 24px 12px;
   border-bottom: 1px solid var(--border);
   font-size: 12px;
   color: var(--muted);
   line-height: 20px;
+  overflow-wrap: anywhere;
 }
 .design-modal .modal-body {
   flex: 1;
 }
 .design-modal > footer {
-  height: 72px;
   min-height: 72px;
   padding: 20px 24px;
   gap: 16px;
@@ -4032,9 +4065,6 @@ button.primary {
   background: rgba(113, 99, 213, 0.16);
   border-left: 3px solid var(--action);
   box-shadow: 0 0 0 1px rgba(113, 99, 213, 0.35);
-}
-.terms-heading > .segments {
-  left: calc(50% + 175px);
 }
 
 .lora-metadata-form,
@@ -4259,14 +4289,6 @@ button.primary {
 }
 .with-lookup .selection-toolbar .selection-divider { margin: 0 4px; }
 .with-lookup .selection-toolbar .weight-label { display: none; }
-.with-lookup .terms-heading { flex-wrap: wrap; height: auto; min-height: 60px; }
-.with-lookup .terms-heading > .segments {
-  position: static;
-  transform: none;
-  margin-left: auto;
-  flex: 0 0 158px;
-}
-.with-lookup .terms-heading > .spacer { display: none; }
 @media (min-width: 1500px) {
   .editor-page.with-lookup .editor-grid {
     grid-template-columns: minmax(240px, .7fr) minmax(0, 1.4fr) auto;
@@ -4386,7 +4408,7 @@ button.primary {
   background: var(--panel);
   box-shadow: 0 6px 24px #0007;
 }
-.operation-error > div { flex: 1; min-width: 0; }
+.operation-error > div { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .status-dot.pending { background: var(--faint); }
 .connection-card {
   height: auto;
@@ -4471,6 +4493,26 @@ button.primary {
   .terms-panel .term-count { display: none; }
 }
 @container (max-width: 400px) {
+  .terms-heading {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .terms-heading > .segments {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .terms-heading-actions {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .terms-panel .term-filter-row {
+    grid-template-columns: minmax(0, 1fr);
+    height: auto;
+  }
+  .term-filter-row .duplicates-button {
+    justify-self: start;
+    max-width: 100%;
+    white-space: normal;
+  }
   .terms-panel .term-row, .terms-panel .group-row {
     --editor-translation-width: 0px;
   }

@@ -1946,7 +1946,7 @@ export function EditorPage() {
         <div className="terms-column">
           <section className="terms-panel">
             <header className="terms-heading">
-              <span>{tr("结构化词条")}</span>
+              <span className="terms-heading-label">{tr("结构化词条")}</span>
               <Segments
                 label={tr("有效或隐藏词条")}
                 value={hidden ? "hidden" : "active"}
@@ -1960,19 +1960,20 @@ export function EditorPage() {
                   { label: tr("隐藏 {0}", w.Hidden.length), value: "hidden" },
                 ]}
               />
-              <span className="spacer" />
-              <IconButton
-                icon={Plus}
-                label={tr("创建视觉组")}
-                disabled={!activeSelected.length || hasNaturalSelection || !app.data.valid || hidden}
-                onClick={() => groupForm()}
-              />
-              <IconButton
-                icon={Star}
-                label={tr("收藏选中有效项")}
-                disabled={!activeSelected.length || hidden || !app.data.valid}
-                onClick={() => favoriteForm()}
-              />
+              <div className="terms-heading-actions">
+                <IconButton
+                  icon={Plus}
+                  label={tr("创建视觉组")}
+                  disabled={!activeSelected.length || hasNaturalSelection || !app.data.valid || hidden}
+                  onClick={() => groupForm()}
+                />
+                <IconButton
+                  icon={Star}
+                  label={tr("收藏选中有效项")}
+                  disabled={!activeSelected.length || hidden || !app.data.valid}
+                  onClick={() => favoriteForm()}
+                />
+              </div>
             </header>
             <div className="term-filter-row">
               <div className="search-input">

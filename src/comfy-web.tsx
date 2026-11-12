@@ -11,21 +11,20 @@ import {
 import { useApp } from "./context";
 import { useComfyProcess, openComfySettings } from "./comfy-process";
 import { openExternal } from "./api";
-import { IconButton } from "./ui";
+import { IconButton, PageLabelButton } from "./ui";
 
 export function ComfyWebLauncher() {
   const app = useApp(),
     process = useComfyProcess();
   return (
-    <button
+    <PageLabelButton
+      label={tr("ComfyUI 网页")}
+      icon={<Browser size={16} />}
       className={`nav-item ${app.page === "comfy" ? "selected" : ""}`}
       onClick={() =>
         void process.openWeb().catch((e) => app.reportError(String(e)))
       }
-    >
-      <Browser size={16} />
-      <span>{tr("ComfyUI 网页")}</span>
-    </button>
+    />
   );
 }
 

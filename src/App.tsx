@@ -1,4 +1,4 @@
-import { setLocale, tr, trDiagnostic } from "./i18n";
+import { getLocale, setLocale, tr, trDiagnostic } from "./i18n";
 import { useMovingIndicator } from "./editor-motion";
 import { useTabSort } from "./tab-sort";
 import {
@@ -44,6 +44,7 @@ import {
   Menu,
   Empty,
   AsyncImage,
+  PageLabelButton,
   type MenuItem,
 } from "./ui";
 import { SaveCard, ImportImage } from "./file-dialogs";
@@ -74,6 +75,11 @@ const pages: Record<string, { title: string; icon: any }> = {
   console: { title: "ComfyUI 控制台", icon: TerminalWindow },
   comfy: { title: "ComfyUI 网页", icon: Cube },
 };
+const englishNavigationLabels: Record<string, string> = {
+  builtin: "Built-in Library",
+  settings: "Settings",
+};
+
 export default function App() {
   const [data, setData] = useState<AppData | null>(null);
   const dataRef = useRef<AppData | null>(null);
@@ -627,6 +633,10 @@ export default function App() {
       ?.split(/[\\/]/)
       .at(-1)
       ?.replace(/(?:\.prompt-card)?\.png$/i, "") || tr("未命名项目");
+  const lexiconStatus =
+    (data.lexicon.path?.split(/[\\/]/).at(-1) || tr("未加载统计词库")) +
+    " " + tr("· F5 刷新词库") +
+    (data.lexicon.changed ? tr(" · 文件已变化") : "");
   const projectMenu: MenuItem[] = [
     { label: tr("新建项目"), shortcut: "Ctrl+N", action: newProject },
     { label: tr("打开项目…"), shortcut: "Ctrl+O", action: openProject },
@@ -701,16 +711,17 @@ export default function App() {
   };
   const navigation = (id: string, title?: string) => {
     const Icon = id === "positive" ? TextAlignLeft : pages[id].icon;
+    const label = title || tr(pages[id].title);
     return (
-      <button
+      <PageLabelButton
         key={id}
+        label={label}
+        shortLabel={getLocale() === "en" ? englishNavigationLabels[id] || label : label}
+        icon={<Icon size={16} />}
+        count={id === "snapshots" ? data.project.Snapshots.length : undefined}
         className={`nav-item ${page === id || (id === "positive" && page === "negative") ? "selected" : ""}`}
         onClick={() => open(id)}
-      >
-        <Icon size={16} />
-        <span>{title || tr(pages[id].title)}</span>
-        {id === "snapshots" && <small>{data.project.Snapshots.length}</small>}
-      </button>
+      />
     );
   };
   return (
@@ -875,20 +886,16 @@ export default function App() {
                     });
                   }}
                 >
-                  <button
+                  <PageLabelButton
                     role="tab"
+                    label={tr(pages[id].title)}
+                    icon={<Icon size={16} />}
+                    count={id === "positive" || id === "negative"
+                      ? data.project.State[id === "positive" ? "Positive" : "Negative"].Active.length
+                      : undefined}
                     aria-selected={page === id}
                     onClick={() => open(id)}
-                  >
-                    <Icon size={16} />
-                    <span>{tr(pages[id].title)}</span>
-                    {id === "positive" && (
-                      <small>{data.project.State.Positive.Active.length}</small>
-                    )}
-                    {id === "negative" && (
-                      <small>{data.project.State.Negative.Active.length}</small>
-                    )}
-                  </button>
+                  />
                   {!["positive", "negative"].includes(id) &&
                     !pinned.includes(id) && (
                       <IconButton
@@ -1008,13 +1015,9 @@ export default function App() {
               ))}
           </main>
           {!["runs", "probe", "console", "comfy", "settings"].includes(page) && <ResultFilmstrip />}
-          <footer
-            className="statusbar"
-            data-narrow-hint={["console", "settings"].includes(page) ? tr("Ctrl + Tab 切换页签") : tr("原文与词条上下排列 · 中间分隔条可拖动")}
-            data-compact-hint={tr("解析完成 · 复制全部有效项")}
-          >
+          <footer className="statusbar">
             <CheckCircle size={12} />
-            <span>
+            <span className="workspace-save-status">
               {data.sessionRestoreError
                 ? tr("工作区原文件已保护")
                 : tr("工作区自动保存")}
@@ -1024,12 +1027,23 @@ export default function App() {
             </span>
             <span
               className="lexicon-status"
-              title={data.lexicon.path || tr("尚未加载 Excel 词库")}
+              title={data.lexicon.path || lexiconStatus}
             >
-              {data.lexicon.path?.split(/[\\/]/).at(-1) || tr("未加载统计词库")}{" " + tr("· F5 刷新词库")}{data.lexicon.changed ? tr(" · 文件已变化") : ""}
+              {lexiconStatus}
             </span>
             <span className="spacer" />
-            <span>{tr("Ctrl + Tab 切换页签")}</span>
+            <span className="lexicon-status-action">
+              <IconButton
+                icon={Books}
+                label={lexiconStatus}
+                onClick={() => {
+                  sessionStorage.setItem("settings-section", "data");
+                  window.dispatchEvent(new Event("settings-section"));
+                  open("settings");
+                }}
+              />
+            </span>
+            <span className="statusbar-shortcut">{tr("Ctrl + Tab 切换页签")}</span>
           </footer>
         </div>
       </div>
