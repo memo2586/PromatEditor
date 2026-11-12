@@ -41,6 +41,35 @@
   background: var(--panel);
   border-bottom: 1px solid var(--accent);
 }
+.tabs[data-tab-sorting] {
+  cursor: grabbing;
+  user-select: none;
+}
+.tabs[data-tab-sorting] button {
+  cursor: grabbing;
+}
+.tabs > [data-tab-id]:not([data-tab-id="positive"], [data-tab-id="negative"]) {
+  touch-action: pan-y;
+}
+.tabs[data-tab-sorting] > .moving-selection {
+  visibility: hidden;
+}
+.tabs > .tab[data-tab-placeholder] {
+  opacity: 0;
+}
+.tabs[data-tab-sorting] > .tab.tab-sort-ghost,
+.tabs[data-tab-sorting] > .tab.active {
+  background: var(--panel);
+}
+.tabs[data-tab-sorting] > .tab.active {
+  box-shadow: inset 0 -1px var(--accent);
+}
+.tabs > .tab.tab-sort-ghost {
+  box-shadow: 0 4px 16px #0005;
+}
+.tabs > .tab.tab-sort-ghost.active {
+  box-shadow: 0 4px 16px #0005, inset 0 -1px var(--accent);
+}
 html .sidebar[data-moving-selection] .nav-item.selected,
 html .tabs[data-moving-selection] .tab.active {
   background: transparent;

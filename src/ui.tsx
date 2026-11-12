@@ -412,8 +412,8 @@ const modalLayouts: Record<string, [number, number, string]> = {
   保存提示词卡: [800, 800, "项目嵌入 PNG；图片仍可正常查看。"],
   另存提示词卡: [800, 800, "项目嵌入 PNG；图片仍可正常查看。"],
   从图片导入: [880, 904, "PNG 中的提示词卡与生成信息可逐项选择来源。"],
-  创建视觉组: [800, 848, "按原文顺序收拢选中有效词；不自动加入收藏。"],
-  修改视觉组: [800, 848, "修改组属性，保留成员身份和权重。"],
+  创建视觉组: [800, 760, "按原文顺序收拢选中有效词；不自动加入收藏。"],
+  修改视觉组: [800, 760, "修改组属性，保留成员身份和权重。"],
   收藏选中片段: [800, 760, "仅保存有效词；保存后创建 / 复用视觉组。"],
   编辑收藏片段: [800, 760, "收藏片段与已插入的视觉组分别保存。"],
   编辑内置词条: [800, 884, "本机修改独立保存；内置条目可恢复原始版本。"],
@@ -475,6 +475,8 @@ export function Modal({
       const overlays = document.querySelectorAll(".modal-overlay");
       const confirmation = Array.from(overlays).find(overlay => overlay.querySelector(".application-confirmation"));
       if (overlayRef.current !== (confirmation || overlays.item(overlays.length - 1))) return;
+      if (e.key === "Escape" && e.target instanceof HTMLElement &&
+          ref.current?.contains(e.target) && e.target.dataset.completionOpen === "true") return;
       if (e.key === "Escape") {
         e.preventDefault();
         e.stopImmediatePropagation();
@@ -546,12 +548,14 @@ export function Menu({
   x,
   y,
   width,
+  className = "",
   onClose,
 }: {
   items: MenuItem[];
   x: number;
   y: number;
   width?: number;
+  className?: string;
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -597,7 +601,7 @@ export function Menu({
   return (
     <div
       ref={ref}
-      className={`menu ${width ? "menu-match-trigger" : ""}`}
+      className={`menu ${width ? "menu-match-trigger" : ""} ${className}`}
       role="menu"
       style={{ left: x, top: y, ...(width ? { width, minWidth: 0 } : {}) }}
       onPointerDown={(e) => e.stopPropagation()}

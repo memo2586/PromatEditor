@@ -524,19 +524,7 @@ fn merge_workspace(
         w.layout.clear();
     }
     w.active = items.into_iter().map(|(_, t)| t).collect();
-    w.text = w
-        .active
-        .iter()
-        .map(Term::display)
-        .collect::<Vec<_>>()
-        .join(", ");
-    let parsed = parser::parse(&w.text, Some(&w.active));
-    if !parsed.valid || parsed.terms.len() != w.active.len() {
-        return Err("所选差异会改变语法边界，整笔未应用".into());
-    }
-    w.active = parsed.terms;
-    w.parsed_text = Some(w.text.clone());
-    editor::refresh(&mut w);
+    editor::sync_workspace(&mut w).map_err(|_| "所选差异会改变语法边界，整笔未应用")?;
     Ok(w)
 }
 
@@ -612,7 +600,7 @@ impl AppState {
                 (&self.editor.project.state.positive, "积极"),
                 (&self.editor.project.state.negative, "消极"),
             ] {
-                if let Some(error) = parser::parse(&w.text, None).error {
+                if let Some(error) = editor::parse_workspace(w).error {
                     issues.push(issue("prompt", format!("{label}提示词：{error}")));
                 }
             }
@@ -659,7 +647,7 @@ impl AppState {
             generation.seed_control = "fixed".into();
         }
         for w in [&state.positive, &state.negative] {
-            if let Some(e) = parser::parse(&w.text, None).error {
+            if let Some(e) = editor::parse_workspace(w).error {
                 issues.push(issue("prompt", e));
             }
         }

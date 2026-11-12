@@ -393,17 +393,36 @@ impl AppState {
         self.persist("session.json", &self.editor.project)?;
         self.persist("workspace.json", &json!({"projectPath":self.project_path}))
     }
+    fn save_editor_edit<T>(
+        &mut self,
+        edit: impl FnOnce(&mut Editor) -> Result<T, String>,
+        changed: impl FnOnce(&T) -> bool,
+    ) -> Result<T, String> {
+        let old = self.editor.clone();
+        let result = edit(&mut self.editor)?;
+        if changed(&result) {
+            if let Err(error) = self.persist("session.json", &self.editor.project) {
+                self.editor = old;
+                return Err(error);
+            }
+        }
+        Ok(result)
+    }
     fn dirty(&self) -> bool {
         let mut p = self.editor.project.clone();
         p.state.is_negative = false;
         p.state.positive.caret = 0;
         p.state.negative.caret = 0;
+        p.state.positive.selection_end = None;
+        p.state.negative.selection_end = None;
         p.state.positive.scroll = 0.;
         p.state.negative.scroll = 0.;
         let mut saved = serde_json::from_str::<Project>(&self.saved_project).unwrap_or_default();
         saved.state.is_negative = false;
         saved.state.positive.caret = 0;
         saved.state.negative.caret = 0;
+        saved.state.positive.selection_end = None;
+        saved.state.negative.selection_end = None;
         saved.state.positive.scroll = 0.;
         saved.state.negative.scroll = 0.;
         self.saved_card_unavailable
@@ -549,7 +568,17 @@ impl AppState {
                 }
             }
             "editor.text" => {
-                self.editor.set_text(get(&p, "text").into())?;
+                let selection = |key| {
+                    p[key].as_array().and_then(|v| {
+                        Some((v.first()?.as_u64()? as usize, v.get(1)?.as_u64()? as usize))
+                    })
+                };
+                self.editor.set_source_text(
+                    get(&p, "text").into(),
+                    selection("before"),
+                    selection("after"),
+                    p["scroll"].as_f64(),
+                )?;
                 save_session = true
             }
             "editor.workspace" => {
@@ -558,8 +587,13 @@ impl AppState {
             }
             "editor.view" => {
                 let w = self.editor.project.state.current_mut();
-                w.caret = p["caret"].as_u64().unwrap_or(w.caret as u64) as usize;
-                w.scroll = p["scroll"].as_f64().unwrap_or(w.scroll);
+                let selection = p["caret"].as_u64().map(|start| {
+                    (
+                        start as usize,
+                        p["selectionEnd"].as_u64().unwrap_or(start) as usize,
+                    )
+                });
+                editor::set_source_view(w, selection, p["scroll"].as_f64());
                 save_session = true
             }
             "editor.composition" => self.composing = p["active"].as_bool().unwrap_or(false),
@@ -626,6 +660,51 @@ impl AppState {
                     p["completion"].as_bool().unwrap_or(false),
                 )?;
                 save_session = true
+            }
+            "editor.natural.bind" => {
+                let start = p["start"].as_u64().ok_or("请选择要绑定的原文")? as usize;
+                let end = p["end"].as_u64().ok_or("请选择要绑定的原文")? as usize;
+                let terms = ids(&p);
+                self.save_editor_edit(
+                    |editor| match editor.bind_natural(start, end) {
+                        Err(_) if !terms.is_empty() => editor.bind_natural_terms(&terms),
+                        result => result,
+                    },
+                    |_| true,
+                )?;
+            }
+            "editor.term.edit" => {
+                self.save_editor_edit(
+                    |editor| editor.edit_term_text(get(&p, "id"), get(&p, "text")),
+                    |_| true,
+                )?;
+            }
+            "editor.group.append" => {
+                self.save_editor_edit(
+                    |editor| editor.append_group_term(get(&p, "id"), get(&p, "text")),
+                    |_| true,
+                )?;
+            }
+            "editor.natural.unbind" => {
+                let at = p["start"].as_u64().ok_or("未找到自然语言提示词")? as usize;
+                self.save_editor_edit(|editor| editor.unbind_natural(at), |_| true)?;
+            }
+            "editor.natural.edit" => {
+                self.save_editor_edit(
+                    |editor| editor.edit_natural(get(&p, "id"), get(&p, "text")),
+                    |_| true,
+                )?;
+            }
+            "editor.symbols.clean" => {
+                let escape = match get(&p, "action") {
+                    "commas" => false,
+                    "escape" => true,
+                    _ => return Err("未知符号整理操作".into()),
+                };
+                let changes = self.save_editor_edit(|editor| editor.clean_symbols(escape), |n| *n > 0)?;
+                let mut state = self.state();
+                state["changes"] = json!(changes);
+                return Ok(state);
             }
             "editor.copy" => {
                 self.editor.require_valid()?;
@@ -1286,6 +1365,27 @@ impl AppState {
                 self.loras = next;
                 return Ok(json!({"data":self.loras,"warnings":warnings}));
             }
+            "lora.triggers.insert" => {
+                let text = get(&p, "text").trim();
+                if text.is_empty() {
+                    return Err("请输入 LoRA 触发词".into());
+                }
+                let start = p["start"].as_u64()
+                    .map_or_else(|| self.editor.current().text.encode_utf16().count(), |n| n as usize);
+                self.save_editor_edit(|editor| {
+                    if p["createGroup"] == true {
+                        editor.insert_favorite(&Favorite {
+                            id: String::new(),
+                            name: get(&p, "name").into(),
+                            text: text.into(),
+                            category: "Extra".into(),
+                            images: vec![],
+                        }, start, 0)
+                    } else {
+                        editor.insert(text, start, 0, false)
+                    }
+                }, |_| true)?;
+            }
             "lora.controller" => {
                 let targets = ids(&p);
                 let catalog = self.http("/prompt-editor/lora-library")?;
@@ -1294,7 +1394,8 @@ impl AppState {
                     .into_iter()
                     .flatten()
                     .filter_map(|f| {
-                        Some((get(f, "path").to_lowercase(), get(f, "key").to_string()))
+                        let (path, key) = (f["path"].as_str()?, f["key"].as_str()?);
+                        (!path.is_empty() && !key.is_empty()).then(|| (library::path_key(path), key))
                     })
                     .collect();
                 let mut entries = vec![];
@@ -1306,9 +1407,11 @@ impl AppState {
                         .iter()
                         .find(|x| &x.id == id)
                         .ok_or("LoRA 不存在")?;
-                    if let Some(key) = identity.get(&item.file_path.to_lowercase()) {
+                    let path = Path::new(&item.file_path);
+                    let path = if path.is_relative() { Path::new(&item.root).join(path) } else { path.to_path_buf() };
+                    if let Some(key) = identity.get(&library::path_key(&path.to_string_lossy())) {
                         entries.push(LoraControlEntry {
-                            name: key.clone(),
+                            name: (*key).into(),
                             strength: item.strength,
                             clip_strength: item.clip_strength,
                             active: true,
@@ -1477,7 +1580,7 @@ impl AppState {
             (&self.editor.project.state.positive, "积极"),
             (&self.editor.project.state.negative, "消极"),
         ] {
-            if let Some(e) = parser::parse(&w.text, None).error {
+            if let Some(e) = editor::parse_workspace(w).error {
                 return Err(format!("{}提示词语法未完成：{}", label, e));
             }
         }

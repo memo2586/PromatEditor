@@ -1,4 +1,5 @@
 import { useMovingIndicator } from "./editor-motion";
+import { useTabSort } from "./tab-sort";
 import {
   useState,
   useEffect,
@@ -116,6 +117,7 @@ export default function App() {
   const [pinned, setPinned] = useState<string[]>(() =>
     JSON.parse(localStorage.getItem("pinned-tabs") || "[]"),
   );
+  const displayedTabs = useTabSort(tabsMotionRef, tabs, setTabs, !!data);
   const closedTabs = useRef<string[]>([]);
   const [systemDark, setSystemDark] = useState(() =>
     typeof window !== "undefined" && window.matchMedia
@@ -151,12 +153,6 @@ export default function App() {
       document.documentElement.style.removeProperty("--app-font");
     }
   }, [data?.settings?.FontFamily]);
-  const tabPointerDrag = useRef<{
-    id: string;
-    x: number;
-    y: number;
-    started: boolean;
-  } | null>(null);
   const flush = useRef<() => Promise<void>>(async () => {});
   const draftGuards = useRef(new Map<string, () => Promise<boolean>>());
   const draftFlushers = useRef(new Map<string, () => Promise<void>>());
@@ -194,7 +190,7 @@ export default function App() {
       )
         await flush.current();
       let result: T;
-      if (["editor.insert", "favorites.insert", "builtin.apply"].includes(method) && dataRef.current) {
+      if (["editor.insert", "favorites.insert", "builtin.apply", "lora.triggers.insert"].includes(method) && dataRef.current) {
         const p = payload as { start?: number; negative?: boolean };
         if (p.start == null) payload = { ...p, start: promptInsertionStart(dataRef.current.project.State, p.negative) };
       }
@@ -853,79 +849,13 @@ export default function App() {
             aria-label="工作页签"
             onWheel={(e) => (e.currentTarget.scrollLeft += e.deltaY)}
           >
-            {tabs.map((id) => {
+            {displayedTabs.map((id) => {
               const Icon = pages[id].icon;
               return (
                 <div
                   key={id}
                   className={`tab ${page === id ? "active" : ""}`}
                   data-tab-id={id}
-                  draggable={
-                    !isTauri() && !["positive", "negative"].includes(id)
-                  }
-                  onPointerDown={(e) => {
-                    if (
-                      !isTauri() ||
-                      ["positive", "negative"].includes(id) ||
-                      e.button !== 0
-                    )
-                      return;
-                    tabPointerDrag.current = {
-                      id,
-                      x: e.clientX,
-                      y: e.clientY,
-                      started: false,
-                    };
-                  }}
-                  onPointerMove={(e) => {
-                    const drag = tabPointerDrag.current;
-                    if (
-                      drag &&
-                      Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 5
-                    ) {
-                      drag.started = true;
-                      e.currentTarget.setPointerCapture(e.pointerId);
-                    }
-                  }}
-                  onPointerUp={(e) => {
-                    const drag = tabPointerDrag.current;
-                    tabPointerDrag.current = null;
-                    if (!drag?.started) return;
-                    const target = document
-                      .elementFromPoint(e.clientX, e.clientY)
-                      ?.closest<HTMLElement>("[data-tab-id]")?.dataset.tabId;
-                    if (
-                      !target ||
-                      target === drag.id ||
-                      ["positive", "negative"].includes(target)
-                    )
-                      return;
-                    setTabs((prev) => {
-                      const next = prev.filter((id) => id !== drag.id);
-                      next.splice(next.indexOf(target), 0, drag.id);
-                      return next;
-                    });
-                  }}
-                  onPointerCancel={() => (tabPointerDrag.current = null)}
-                  onDragStart={(e) =>
-                    e.dataTransfer.setData("application/tab", id)
-                  }
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    const source = e.dataTransfer.getData("application/tab");
-                    if (
-                      !source ||
-                      source === id ||
-                      ["positive", "negative"].includes(id)
-                    )
-                      return;
-                    setTabs((prev) => {
-                      const next = prev.filter((s) => s !== source);
-                      next.splice(next.indexOf(id), 0, source);
-                      return next;
-                    });
-                  }}
                   onContextMenu={(e) => {
                     e.preventDefault();
                     setMenu({

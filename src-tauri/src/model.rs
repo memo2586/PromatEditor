@@ -53,8 +53,23 @@ pub struct Workspace {
     pub groups: Vec<VisualGroup>,
     pub layout: Vec<String>,
     pub parsed_text: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub natural: Vec<SourceRange>,
     pub caret: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub selection_end: Option<usize>,
     pub scroll: f64,
+}
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct SourceRange {
+    pub start: usize,
+    pub length: usize,
+}
+impl SourceRange {
+    pub fn end(self) -> usize {
+        self.start.saturating_add(self.length)
+    }
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]

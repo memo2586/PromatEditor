@@ -217,6 +217,7 @@ impl Scanner {
             return;
         };
         let bl = base.encode_utf16().count();
+        let base_offset = raw.find(&base).map_or(0, |offset| raw[..offset].chars().count());
         let t = self.term(
             a,
             b,
@@ -226,7 +227,7 @@ impl Scanner {
             weighted,
             group,
             editable && !special,
-            a,
+            a + base_offset,
             bl,
         );
         self.result.terms.push(t);
@@ -433,7 +434,97 @@ impl Scanner {
     }
 }
 pub fn parse(s: &str, previous: Option<&[Term]>) -> ParseResult {
-    let chars: Vec<char> = s.chars().collect();
+    parse_source(s, &[], previous)
+}
+
+pub fn parse_source(s: &str, natural: &[SourceRange], previous: Option<&[Term]>) -> ParseResult {
+    let Some(ranges) = natural_bytes(s, natural) else {
+        return ParseResult {
+            terms: vec![],
+            error: Some("自然语言范围无效".into()),
+            error_offset: 0,
+            valid: false,
+        };
+    };
+    let mut result = ParseResult {
+        terms: vec![],
+        error: None,
+        error_offset: 0,
+        valid: true,
+    };
+    let mut byte = 0;
+    let mut offset = 0;
+    for (range, bytes) in natural.iter().zip(ranges) {
+        append_source(&mut result, &s[byte..bytes.start], offset);
+        byte = bytes.end;
+        let raw = s[bytes].to_string();
+        result.terms.push(Term {
+            id: id(),
+            raw: raw.clone(),
+            base: raw,
+            key: String::new(),
+            kind: "natural".into(),
+            weight: Decimal::ONE,
+            weighted: false,
+            editable: false,
+            start: range.start,
+            length: range.length,
+            base_start: range.start,
+            base_length: range.length,
+            group: None,
+            previous: None,
+            next: None,
+        });
+        offset = range.end();
+    }
+    append_source(&mut result, &s[byte..], offset);
+    if result.valid {
+        if let Some(prev) = previous {
+            reuse_ids(&mut result.terms, prev);
+        }
+    }
+    result
+}
+
+pub fn natural_bytes(s: &str, natural: &[SourceRange]) -> Option<Vec<std::ops::Range<usize>>> {
+    let mut chars = s.char_indices().peekable();
+    let mut offset = 0;
+    let mut byte_at = |target| {
+        while offset < target {
+            offset += chars.next()?.1.len_utf16();
+        }
+        (offset == target).then(|| chars.peek().map_or(s.len(), |&(i, _)| i))
+    };
+    natural
+        .iter()
+        .map(|range| {
+            let a = byte_at(range.start)?;
+            let b = byte_at(range.end())?;
+            let body = &s[a..b];
+            let left = s[..a].rsplit(['\r', '\n']).next().unwrap_or("");
+            let right = s[b..].split(['\r', '\n']).next().unwrap_or("");
+            (!body.is_empty()
+                && !body.contains(['\r', '\n'])
+                && body.trim() == body
+                && left.trim().is_empty()
+                && right.trim().is_empty())
+            .then_some(a..b)
+        })
+        .collect()
+}
+
+fn append_source(result: &mut ParseResult, text: &str, offset: usize) {
+    if !result.valid || text.is_empty() {
+        return;
+    }
+    let mut part = scan_source(text, offset);
+    result.terms.append(&mut part.terms);
+    result.valid = part.valid;
+    result.error = part.error;
+    result.error_offset = part.error_offset;
+}
+
+fn protected_chars(s: &str, chars: &[char]) -> Vec<bool> {
     let mut protected = vec![false; chars.len()];
     for m in FACE.find_iter(s) {
         let a = s[..m.start()].chars().count();
@@ -451,9 +542,15 @@ pub fn parse(s: &str, previous: Option<&[Term]>) -> ParseResult {
         }
         protected[a..b].fill(true)
     }
+    protected
+}
+
+fn scan_source(s: &str, offset: usize) -> ParseResult {
+    let chars: Vec<char> = s.chars().collect();
+    let protected = protected_chars(s, &chars);
     let n = chars.len();
     let mut offsets = Vec::with_capacity(n + 1);
-    offsets.push(0);
+    offsets.push(offset);
     for c in &chars {
         offsets.push(offsets.last().unwrap() + c.len_utf16());
     }
@@ -469,59 +566,124 @@ pub fn parse(s: &str, previous: Option<&[Term]>) -> ParseResult {
         },
     };
     scan.scan(0, n, Decimal::ONE, false, None, true, 0);
-    if scan.result.valid {
-        if let Some(prev) = previous {
-            let terms = &mut scan.result.terms;
-            let n = prev.len();
-            let m = terms.len();
-            let mut used = std::collections::HashSet::new();
-            if n * m <= 2_000_000 {
-                let mut dp = vec![0u32; (n + 1) * (m + 1)];
-                for i in (0..n).rev() {
-                    for j in (0..m).rev() {
-                        dp[i * (m + 1) + j] =
-                            if prev[i].kind == terms[j].kind && prev[i].key == terms[j].key {
-                                1 + dp[(i + 1) * (m + 1) + j + 1]
-                            } else {
-                                dp[(i + 1) * (m + 1) + j].max(dp[i * (m + 1) + j + 1])
-                            }
-                    }
-                }
-                let (mut a, mut b) = (0, 0);
-                while a < n && b < m {
-                    if prev[a].kind == terms[b].kind && prev[a].key == terms[b].key {
-                        terms[b].id = prev[a].id.clone();
-                        used.insert(prev[a].id.clone());
-                        a += 1;
-                        b += 1
-                    } else if dp[(a + 1) * (m + 1) + b] >= dp[a * (m + 1) + b + 1] {
-                        a += 1
-                    } else {
-                        b += 1
-                    }
-                }
-            } else {
-                for t in terms.iter_mut() {
-                    if let Some(p) = prev
-                        .iter()
-                        .find(|p| p.kind == t.kind && p.key == t.key && !used.contains(&p.id))
-                    {
-                        t.id = p.id.clone();
-                        used.insert(p.id.clone());
-                    }
-                }
+    scan.result
+}
+
+// Character offsets are returned as byte ranges into this source segment.
+pub fn symbol_edits(s: &str, escape: bool) -> Vec<(usize, usize, &'static str)> {
+    let chars: Vec<_> = s.chars().collect();
+    let mut bytes: Vec<_> = s.char_indices().map(|(i, _)| i).collect();
+    bytes.push(s.len());
+    let protected = protected_chars(s, &chars);
+    let mut edits = Vec::new();
+    let mut brackets = Vec::new();
+    let mut comma = None;
+    let mut i = 0;
+    while i < chars.len() {
+        let c = chars[i];
+        if c == '\\' || protected[i] {
+            if escape && c == '\\' && i + 1 == chars.len() {
+                edits.push((bytes[i], bytes[i], "\\"));
             }
-            let mut remaining = prev.iter().filter(|p| !used.contains(&p.id));
-            for t in terms.iter_mut() {
-                if !used.contains(&t.id) {
-                    if let Some(p) = remaining.next() {
-                        t.id = p.id.clone()
+            comma = None;
+            i += if c == '\\' { 2 } else { 1 };
+            continue;
+        }
+        if c == '<'
+            && chars
+                .get(i + 1)
+                .is_some_and(|c| c.is_alphabetic() || c.is_whitespace())
+        {
+            comma = None;
+            if let Some(end) = (i + 1..chars.len()).find(|&j| chars[j] == '>') {
+                i = end + 1;
+                continue;
+            }
+            if escape {
+                edits.push((bytes[i], bytes[i], "\\"));
+            }
+        } else if "([{".contains(c) {
+            brackets.push((c, i));
+            comma = None;
+        } else if ")]}".contains(c) {
+            if brackets
+                .last()
+                .is_some_and(|&(open, _)| matches!((open, c), ('(', ')') | ('[', ']') | ('{', '}')))
+            {
+                brackets.pop();
+            } else if escape {
+                edits.push((bytes[i], bytes[i], "\\"));
+            }
+            comma = None;
+        } else if !escape && brackets.is_empty() && matches!(c, ',' | '，') {
+            if let Some(from) = comma {
+                edits.push((bytes[from], bytes[i + 1], ""));
+            }
+            comma = Some(i + 1);
+        } else if !matches!(c, ' ' | '\t') {
+            comma = None;
+        }
+        i += 1;
+    }
+    if escape {
+        edits.extend(
+            brackets
+                .into_iter()
+                .map(|(_, i)| (bytes[i], bytes[i], "\\")),
+        );
+        edits.sort_unstable_by_key(|e| e.0);
+    }
+    edits
+}
+
+fn reuse_ids(terms: &mut [Term], prev: &[Term]) {
+    let n = prev.len();
+    let m = terms.len();
+    let mut used = std::collections::HashSet::new();
+    if n * m <= 2_000_000 {
+        let mut dp = vec![0u32; (n + 1) * (m + 1)];
+        for i in (0..n).rev() {
+            for j in (0..m).rev() {
+                dp[i * (m + 1) + j] =
+                    if prev[i].kind == terms[j].kind && prev[i].key == terms[j].key {
+                        1 + dp[(i + 1) * (m + 1) + j + 1]
+                    } else {
+                        dp[(i + 1) * (m + 1) + j].max(dp[i * (m + 1) + j + 1])
                     }
-                }
+            }
+        }
+        let (mut a, mut b) = (0, 0);
+        while a < n && b < m {
+            if prev[a].kind == terms[b].kind && prev[a].key == terms[b].key {
+                terms[b].id = prev[a].id.clone();
+                used.insert(prev[a].id.clone());
+                a += 1;
+                b += 1
+            } else if dp[(a + 1) * (m + 1) + b] >= dp[a * (m + 1) + b + 1] {
+                a += 1
+            } else {
+                b += 1
+            }
+        }
+    } else {
+        for t in terms.iter_mut() {
+            if let Some(p) = prev
+                .iter()
+                .find(|p| p.kind == t.kind && p.key == t.key && !used.contains(&p.id))
+            {
+                t.id = p.id.clone();
+                used.insert(p.id.clone());
             }
         }
     }
-    scan.result
+    let mut remaining = prev.iter().filter(|p| !used.contains(&p.id));
+    for t in terms.iter_mut() {
+        if !used.contains(&t.id) {
+            if let Some(p) = remaining.next() {
+                t.id = p.id.clone()
+            }
+        }
+    }
 }
 pub fn with_weight(t: &Term, value: Option<Decimal>) -> Result<String, String> {
     if !t.editable {

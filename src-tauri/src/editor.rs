@@ -65,13 +65,11 @@ impl Editor {
         }
     }
     pub fn status(&self) -> Value {
-        let parsed = parser::parse(&self.current().text, None);
+        let parsed = parse_workspace(self.current());
         json!({"project":self.project,"canUndo":!self.undo.is_empty(),"canRedo":!self.redo.is_empty(),"valid":parsed.valid,"error":parsed.error,"errorOffset":parsed.error_offset})
     }
     pub fn require_valid(&self) -> Result<(), String> {
-        parser::parse(&self.current().text, None)
-            .error
-            .map_or(Ok(()), Err)
+        parse_workspace(self.current()).error.map_or(Ok(()), Err)
     }
     fn targets(&self, ids: &[String], active: bool) -> Result<Vec<Term>, String> {
         self.require_valid()?;
@@ -91,35 +89,49 @@ impl Editor {
         }
     }
     pub fn set_text(&mut self, text: String) -> Result<(), String> {
+        self.set_source_text(text, None, None, None)
+    }
+    pub fn set_source_text(
+        &mut self,
+        text: String,
+        before: Option<(usize, usize)>,
+        after: Option<(usize, usize)>,
+        scroll: Option<f64>,
+    ) -> Result<(), String> {
+        if text == self.current().text {
+            return Ok(());
+        }
+        set_source_view(self.project.state.current_mut(), before, scroll);
         self.transact(|e| {
             e.apply_text(text);
+            set_source_view(e.project.state.current_mut(), after, scroll);
             Ok(())
         })
     }
     fn apply_text(&mut self, text: String) {
+        let w = self.current();
+        let natural = rebase_natural(&w.text, &text, &w.natural, None);
+        self.apply_source(text, natural, None);
+    }
+    fn apply_source(
+        &mut self,
+        text: String,
+        natural: Vec<SourceRange>,
+        edit: Option<(usize, usize, usize)>,
+    ) {
         let w = self.project.state.current_mut();
         let old = w.parsed_text.as_ref().unwrap_or(&w.text).clone();
-        let parsed = parser::parse(&text, None);
+        let edit = edit.filter(|_| old == w.text && old != text);
+        let parsed = parser::parse_source(&text, &natural, None);
+        w.natural = natural;
         w.text = text.clone();
         if !parsed.valid {
             return;
         }
         let a: Vec<_> = old.encode_utf16().collect();
         let b: Vec<_> = text.encode_utf16().collect();
-        let mut start = 0;
-        while start < a.len().min(b.len()) && a[start] == b[start] {
-            start += 1
-        }
-        let mut suffix = 0;
-        while suffix < a.len() - start
-            && suffix < b.len() - start
-            && a[a.len() - 1 - suffix] == b[b.len() - 1 - suffix]
-        {
-            suffix += 1
-        }
-        let removed = a.len() - start - suffix;
-        let inserted = b.len() - start - suffix;
-        let end = start + removed;
+        let (start, end, inserted) = edit.unwrap_or_else(|| source_change(&a, &b));
+        let removed = end - start;
         let delta = inserted as isize - removed as isize;
         let owner: HashMap<_, _> = w
             .groups
@@ -162,20 +174,26 @@ impl Editor {
         let mut membership = HashMap::new();
         let mut terms = parsed.terms;
         for t in &mut terms {
-            if let Some(prior) = unchanged
-                .get(&t.start)
-                .filter(|p| p.kind == t.kind && p.key == t.key && p.length == t.length)
-            {
+            if let Some(prior) = unchanged.get(&t.start).filter(|prior| {
+                (prior.kind == t.kind && prior.key == t.key && prior.length == t.length)
+                    || old == text
+                    || prior.kind == "natural"
+                    || t.kind == "natural"
+            }) {
                 t.id = prior.id.clone();
-                if let Some(g) = owner.get(&prior.id) {
-                    membership.insert(t.id.clone(), g.clone());
+                if t.kind != "natural" {
+                    if let Some(g) = owner.get(&prior.id) {
+                        membership.insert(t.id.clone(), g.clone());
+                    }
                 }
             } else {
                 if let Some(p) = queue.next() {
                     t.id = p.id
                 }
-                if let Some(g) = &inherited {
-                    membership.insert(t.id.clone(), g.clone());
+                if t.kind != "natural" {
+                    if let Some(g) = &inherited {
+                        membership.insert(t.id.clone(), g.clone());
+                    }
                 }
             }
         }
@@ -200,44 +218,205 @@ impl Editor {
         }
         w.active = terms;
         w.parsed_text = Some(text);
-        refresh(w);
-        for g in &mut w.groups {
-            let mut entered = false;
-            let mut exited = false;
-            for t in &w.active {
-                if g.members.contains(&t.id) {
-                    if exited {
-                        g.members.retain(|id| id != &t.id)
-                    }
-                    entered = true
-                } else if entered {
-                    exited = true
-                }
-            }
-        }
+        keep_contiguous_groups(w);
         refresh(w);
     }
     fn sync(&mut self) -> Result<(), String> {
-        let w = self.project.state.current_mut();
-        let text = w
+        sync_workspace(self.project.state.current_mut())
+    }
+    pub fn bind_natural(&mut self, start: usize, end: usize) -> Result<(), String> {
+        let w = self.current();
+        if start >= end
+            || end > w.text.encode_utf16().count()
+            || w.natural.iter().any(|r| r.start < end && r.end() > start)
+        {
+            return Err("请选择尚未绑定的原文".into());
+        }
+        let a = parser::char_index(&w.text, start);
+        let b = parser::char_index(&w.text, end);
+        if w.text[..a].encode_utf16().count() != start || w.text[..b].encode_utf16().count() != end
+        {
+            return Err("请选择完整字符".into());
+        }
+        let body = w.text[a..b]
+            .trim()
+            .lines()
+            .map(str::trim)
+            .collect::<Vec<_>>()
+            .join(" ");
+        if body.is_empty() {
+            return Err("请选择要绑定的原文".into());
+        }
+        let left = w.text[..a].trim_end_matches([' ', '\t']);
+        let right = w.text[b..].trim_start_matches([' ', '\t']);
+        let before = if left.is_empty() || left.ends_with('\n') {
+            ""
+        } else {
+            "\n"
+        };
+        let after = if right.is_empty() || right.starts_with(['\r', '\n']) {
+            ""
+        } else {
+            "\n"
+        };
+        let text = format!("{left}{before}{body}{after}{right}");
+        let range = SourceRange {
+            start: left.encode_utf16().count() + before.len(),
+            length: body.encode_utf16().count(),
+        };
+        let mut natural = rebase_natural(&w.text, &text, &w.natural, None);
+        natural.push(range);
+        natural.sort_by_key(|r| r.start);
+        if let Some(error) = parser::parse_source(&text, &natural, None).error {
+            return Err(error);
+        }
+        self.transact(|e| {
+            e.apply_source(text, natural, None);
+            set_source_view(
+                e.project.state.current_mut(),
+                Some((range.start, range.end())),
+                None,
+            );
+            Ok(())
+        })
+    }
+    pub fn unbind_natural(&mut self, at: usize) -> Result<(), String> {
+        let w = self.current();
+        let mut natural = w.natural.clone();
+        let index = natural
+            .iter()
+            .position(|r| r.start <= at && at < r.end())
+            .ok_or("未找到自然语言提示词")?;
+        let removed = natural.remove(index);
+        let text = w.text.clone();
+        self.transact(|e| {
+            e.apply_source(text, natural, None);
+            // An unbound line can expose invalid syntax while the list shows the last valid parse.
+            if let Some(term) = e.project.state.current_mut().active.iter_mut()
+                .find(|t| t.kind == "natural" && t.start == removed.start)
+            {
+                term.kind = "special".into();
+            }
+            Ok(())
+        })
+    }
+    pub fn bind_natural_terms(&mut self, ids: &[String]) -> Result<(), String> {
+        let targets = self.targets(ids, true)?;
+        let first = self
+            .current()
             .active
             .iter()
-            .map(Term::display)
+            .position(|t| t.id == targets[0].id)
+            .unwrap();
+        let end = first + targets.len();
+        if targets.iter().any(|t| t.kind == "natural")
+            || self.current().active.get(end - 1).map(|t| &t.id) != targets.last().map(|t| &t.id)
+        {
+            return Err("请选择连续的普通词条".into());
+        }
+        let body = targets
+            .iter()
+            .map(|t| t.base.trim())
             .collect::<Vec<_>>()
             .join(", ");
-        let p = parser::parse(&text, None);
-        if !p.valid || p.terms.len() != w.active.len() {
-            return Err("操作会改变语法边界，已取消，请在正文编辑".into());
+        let mut natural = targets[0].clone();
+        natural.kind = "natural".into();
+        natural.base = body.clone();
+        natural.raw = body;
+        natural.key.clear();
+        natural.group = None;
+        natural.editable = false;
+        natural.weighted = false;
+        natural.weight = Decimal::ONE;
+        self.transact(|e| {
+            let w = e.project.state.current_mut();
+            w.active.splice(first..end, [natural]);
+            keep_contiguous_groups(w);
+            sync_workspace(w)
+        })
+    }
+    pub fn edit_natural(&mut self, id: &str, text: &str) -> Result<(), String> {
+        let text = text.trim().lines().map(str::trim).collect::<Vec<_>>().join(" ");
+        if text.is_empty() {
+            return Err("请输入自然语言提示词".into());
         }
-        let mut terms = p.terms;
-        for (a, b) in terms.iter_mut().zip(w.active.iter()) {
-            a.id = b.id.clone()
+        if let Some(term) = self.current().active.iter().find(|t| t.id == id && t.kind == "natural") {
+            return self.insert(&text, term.start, term.length, true);
         }
-        w.text = text.clone();
-        w.parsed_text = Some(text);
-        w.active = terms;
-        refresh(w);
-        Ok(())
+        self.transact(|e| {
+            let term = e.project.state.current_mut().hidden.iter_mut()
+                .find(|t| t.id == id && t.kind == "natural")
+                .ok_or("未找到自然语言提示词")?;
+            term.length = text.encode_utf16().count();
+            term.base_length = term.length;
+            term.raw = text.clone();
+            term.base = text;
+            Ok(())
+        })
+    }
+    pub fn clean_symbols(&mut self, escape: bool) -> Result<usize, String> {
+        let w = self.current();
+        let mut edits = Vec::new();
+        let mut from = 0;
+        for range in parser::natural_bytes(&w.text, &w.natural).ok_or("自然语言范围无效")? {
+            let to = range.start;
+            edits.extend(
+                parser::symbol_edits(&w.text[from..to], escape)
+                    .into_iter()
+                    .map(|(a, b, insert)| (from + a, from + b, insert)),
+            );
+            from = range.end;
+        }
+        edits.extend(
+            parser::symbol_edits(&w.text[from..], escape)
+                .into_iter()
+                .map(|(a, b, insert)| (from + a, from + b, insert)),
+        );
+        if edits.is_empty() {
+            return Ok(0);
+        }
+        let count = edits.len();
+        self.transact(|e| {
+            let w = e.project.state.current_mut();
+            let mut next = w.text.clone();
+            let mut natural = w.natural.clone();
+            let mut start = w.caret;
+            let mut end = w.selection_end.unwrap_or(start);
+            let valid_base = w.parsed_text.as_ref() == Some(&w.text);
+            for (a, b, insert) in edits.into_iter().rev() {
+                let from = w.text[..a].encode_utf16().count();
+                let to = from + w.text[a..b].encode_utf16().count();
+                let map = |at: usize| {
+                    if at >= to {
+                        at - (to - from) + insert.len()
+                    } else {
+                        at.min(from)
+                    }
+                };
+                for range in &mut natural {
+                    range.start = map(range.start);
+                }
+                if valid_base {
+                    for term in &mut w.active {
+                        let end = map(term.start + term.length);
+                        if term.start != from || from != to {
+                            term.start = map(term.start);
+                        }
+                        term.length = end - term.start;
+                    }
+                }
+                start = map(start);
+                end = map(end);
+                next.replace_range(a..b, insert);
+            }
+            if valid_base {
+                w.parsed_text = Some(next.clone());
+            }
+            e.apply_source(next, natural, None);
+            set_source_view(e.project.state.current_mut(), Some((start, end)), None);
+            Ok(())
+        })?;
+        Ok(count)
     }
     pub fn weight(
         &mut self,
@@ -364,9 +543,15 @@ impl Editor {
         self.targets(ids, false)?;
         self.transact(|e| {
             let w = e.project.state.current_mut();
+            let count = w.active.len();
             w.active.retain(|t| !ids.contains(&t.id));
             w.hidden.retain(|t| !ids.contains(&t.id));
-            e.sync()
+            if w.active.len() == count {
+                refresh(w);
+                Ok(())
+            } else {
+                e.sync()
+            }
         })
     }
     pub fn insert(
@@ -379,6 +564,85 @@ impl Editor {
         self.require_valid()?;
         self.transact(|e| e.insert_core(text, start, length, completion).map(|_| ()))
     }
+    pub fn edit_term_text(&mut self, id: &str, text: &str) -> Result<(), String> {
+        self.require_valid()?;
+        let text = text.trim();
+        parse_single_term(text)?;
+        let (term, hidden) = self.current().active.iter().map(|t| (t, false))
+            .chain(self.current().hidden.iter().map(|t| (t, true)))
+            .find(|(t, _)| t.id == id && t.kind == "normal" && t.editable)
+            .ok_or("词条已变更或无法编辑")?;
+        let term = term.clone();
+        if term.base == text {
+            return Ok(());
+        }
+        self.transact(|e| {
+            if hidden {
+                let mut edited = term.clone();
+                edited.base = text.into();
+                let raw = parser::with_weight(&edited, term.weighted.then_some(term.weight))?;
+                let mut parsed = parse_single_term(&raw)?;
+                if parsed.kind != "normal" || parsed.weight != term.weight || parsed.weighted != term.weighted {
+                    return Err("编辑会改变词条类型或权重".into());
+                }
+                parsed.raw = parsed.display();
+                parsed.group = None;
+                parsed.id = term.id;
+                parsed.previous = term.previous;
+                parsed.next = term.next;
+                let target = e.project.state.current_mut().hidden.iter_mut()
+                    .find(|t| t.id == parsed.id).unwrap();
+                *target = parsed;
+            } else {
+                let count = e.current().active.len();
+                e.insert_core(text, term.base_start, term.base_length, true)?;
+                if e.current().active.len() != count
+                    || !e.current().active.iter().any(|t| t.id == term.id && t.kind == "normal"
+                        && t.weight == term.weight && t.weighted == term.weighted)
+                {
+                    return Err("编辑会改变词条边界或权重，请在原文中修改".into());
+                }
+            }
+            Ok(())
+        })
+    }
+    pub fn append_group_term(&mut self, group: &str, text: &str) -> Result<(), String> {
+        self.require_valid()?;
+        let text = text.trim();
+        if text.is_empty() {
+            return Ok(());
+        }
+        let term = parse_single_term(text)?;
+        self.transact(|e| {
+            let previous = e.current().clone();
+            let group_index = previous.groups.iter().position(|g| g.id == group).ok_or("视觉组不存在")?;
+            let members = &previous.groups[group_index].members;
+            let last = previous.active.iter().rposition(|t| members.contains(&t.id))
+                .ok_or("请先恢复组内词条")?;
+            let start = insertion_end(&previous, &previous.active[last]);
+            if let Ok(ids) = e.insert_core(text, start, 0, false) {
+                let w = e.project.state.current_mut();
+                if let [id] = ids.as_slice() {
+                    if w.active.len() == previous.active.len() + 1
+                        && w.active[last + 1].id == *id
+                        && w.active[last].id == previous.active[last].id
+                    {
+                        if let Some(g) = w.groups.iter_mut().find(|g| g.id == group) {
+                            g.members.push(id.clone());
+                            refresh(w);
+                            return Ok(());
+                        }
+                    }
+                }
+            }
+            let w = e.project.state.current_mut();
+            *w = previous;
+            let g = &mut w.groups[group_index];
+            g.members.push(term.id.clone());
+            w.active.insert(last + 1, term);
+            sync_workspace(w)
+        })
+    }
     fn insert_core(
         &mut self,
         text: &str,
@@ -388,9 +652,10 @@ impl Editor {
     ) -> Result<Vec<String>, String> {
         let w = self.current();
         let a = parser::char_index(&w.text, start);
-        let b = parser::char_index(&w.text, start + length);
+        let b = parser::char_index(&w.text, start.saturating_add(length));
         let left = &w.text[..a];
         let right = &w.text[b..];
+        let start = left.encode_utf16().count();
         let mut text = text.to_string();
         if !completion {
             if left
@@ -411,12 +676,17 @@ impl Editor {
             }
         }
         let next = format!("{}{}{}", left, text, right);
-        if let Some(err) = parser::parse(&next, None).error {
-            return Err(err);
-        }
         let len = text.encode_utf16().count();
-        self.apply_text(next);
-        self.project.state.current_mut().caret = start + len;
+        // Identical adjacent phrases can make a text diff place this edit at the wrong copy.
+        let edit = Some((start, w.text[..b].encode_utf16().count(), len));
+        let natural = rebase_natural(&w.text, &next, &w.natural, edit);
+        self.apply_source(next, natural, edit);
+        self.require_valid()?;
+        set_source_view(
+            self.project.state.current_mut(),
+            Some((start + len, start + len)),
+            None,
+        );
         Ok(self
             .current()
             .active
@@ -446,6 +716,12 @@ impl Editor {
         description: &str,
     ) -> Result<(), String> {
         let w = self.project.state.current_mut();
+        if w.active
+            .iter()
+            .any(|t| t.kind == "natural" && ids.contains(&t.id))
+        {
+            return Err("自然语言提示词无法加入视觉组".into());
+        }
         let previous_order: Vec<_> = w.active.iter().map(|t| t.id.clone()).collect();
         if let Some(g) = w.groups.iter_mut().find(|g| {
             g.members
@@ -565,6 +841,9 @@ impl Editor {
         block: Option<&str>,
     ) -> Result<(), String> {
         let targets = self.targets(ids, true)?;
+        if group.is_some() && targets.iter().any(|t| t.kind == "natural") {
+            return Err("自然语言提示词无法加入视觉组".into());
+        }
         let mut target = if target.is_empty() {
             None
         } else {
@@ -783,10 +1062,8 @@ impl Editor {
                     let a = parser::char_index(text, start);
                     let b = parser::char_index(text, start + length);
                     let next = format!("{}{}", &text[..a], &text[b..]);
-                    if let Some(error) = parser::parse(&next, None).error {
-                        return Err(error);
-                    }
                     e.apply_text(next);
+                    e.require_valid()?;
                 }
                 e.sync()?;
                 if let Some(g) = e.current().groups.iter().find(|g| &g.id == gid) {
@@ -937,6 +1214,205 @@ impl Editor {
         })
     }
 }
+fn parse_single_term(text: &str) -> Result<Term, String> {
+    let mut result = parser::parse(text, None);
+    if let Some(error) = result.error {
+        return Err(error);
+    }
+    if result.terms.len() == 1 {
+        Ok(result.terms.remove(0))
+    } else {
+        Err("请输入一个提示词".into())
+    }
+}
+
+pub fn parse_workspace(w: &Workspace) -> parser::ParseResult {
+    parser::parse_source(&w.text, &w.natural, None)
+}
+
+pub fn sync_workspace(w: &mut Workspace) -> Result<(), String> {
+    let (text, natural, mut terms) = render_terms(&w.active, false)
+        .or_else(|| render_terms(&w.active, true))
+        .ok_or("操作会改变语法边界，已取消，请在正文编辑")?;
+    for (parsed, original) in terms.iter_mut().zip(&w.active) {
+        parsed.id = original.id.clone();
+    }
+    w.natural = natural;
+    w.text = text.clone();
+    w.parsed_text = Some(text);
+    w.active = terms;
+    refresh(w);
+    Ok(())
+}
+
+pub fn set_source_view(w: &mut Workspace, selection: Option<(usize, usize)>, scroll: Option<f64>) {
+    if let Some((start, end)) = selection {
+        let limit = w.text.encode_utf16().count();
+        w.caret = start.min(limit);
+        w.selection_end = (end > start).then_some(end.min(limit));
+    }
+    if let Some(scroll) = scroll {
+        w.scroll = scroll;
+    }
+}
+
+fn source_change(a: &[u16], b: &[u16]) -> (usize, usize, usize) {
+    let mut start = a.iter().zip(b).take_while(|(x, y)| x == y).count();
+    if start < a.len().min(b.len()) && start > 0 && (0xD800..=0xDBFF).contains(&a[start - 1]) {
+        start -= 1;
+    }
+    let mut suffix = a[start..]
+        .iter()
+        .rev()
+        .zip(b[start..].iter().rev())
+        .take_while(|(x, y)| x == y)
+        .count();
+    if suffix > 0 && (0xDC00..=0xDFFF).contains(&a[a.len() - suffix]) {
+        suffix -= 1;
+    }
+    (start, a.len() - suffix, b.len() - start - suffix)
+}
+
+fn rebase_natural(
+    old: &str,
+    new: &str,
+    ranges: &[SourceRange],
+    edit: Option<(usize, usize, usize)>,
+) -> Vec<SourceRange> {
+    if ranges.is_empty() || old == new {
+        return ranges.to_vec();
+    }
+    let a: Vec<_> = old.encode_utf16().collect();
+    let b: Vec<_> = new.encode_utf16().collect();
+    let (start, end, inserted) = edit.unwrap_or_else(|| source_change(&a, &b));
+    let delta = inserted as isize - (end - start) as isize;
+    let mut rebased = Vec::new();
+    for range in ranges {
+        // The stored span is trimmed, but edits in its line's whitespace belong to the same prompt.
+        let line_space = |unit: &u16| char::from_u32(u32::from(*unit))
+            .is_some_and(|c| c.is_whitespace() && !matches!(c, '\r' | '\n'));
+        let left = a[..range.start].iter().rev().take_while(|c| line_space(c)).count();
+        let right = a[range.end()..].iter().take_while(|c| line_space(c)).count();
+        let range = SourceRange { start: range.start - left, length: range.length + left + right };
+        let (from, to) = if end <= range.start {
+            let from = range.start.saturating_add_signed(delta);
+            let to = range.end().saturating_add_signed(delta);
+            if start == end && end == range.start {
+                let line = b[start..start + inserted]
+                    .iter()
+                    .rposition(|c| *c == 10 || *c == 13);
+                (start + line.map_or(0, |i| i + 1), to)
+            } else {
+                (from, to)
+            }
+        } else if start >= range.end() {
+            let to = if start == end && start == range.end() {
+                start
+                    + b[start..start + inserted]
+                        .iter()
+                        .position(|c| *c == 10 || *c == 13)
+                        .unwrap_or(inserted)
+            } else {
+                range.end()
+            };
+            (range.start, to)
+        } else if start <= range.start
+            && end >= range.end()
+            && (start != range.start || end != range.end())
+        {
+            continue;
+        } else {
+            (
+                range.start.min(start),
+                range
+                    .end()
+                    .saturating_add_signed(delta)
+                    .max(start + inserted),
+            )
+        };
+        let mut byte = parser::char_index(new, from);
+        let last = parser::char_index(new, to);
+        if byte >= last {
+            continue;
+        }
+        for part in new[byte..last].split_inclusive('\n') {
+            let end = byte + part.len();
+            let left = new[..byte]
+                .rsplit_once('\n')
+                .map_or(&new[..byte], |(_, s)| s);
+            let right = if part.ends_with('\n') {
+                ""
+            } else {
+                new[end..].split('\n').next().unwrap_or("")
+            };
+            let body = part.trim();
+            if !body.is_empty() && left.trim().is_empty() && right.trim().is_empty() {
+                rebased.push(SourceRange {
+                    start: new[..byte + part.len() - part.trim_start().len()]
+                        .encode_utf16()
+                        .count(),
+                    length: body.encode_utf16().count(),
+                });
+            }
+            byte = end;
+        }
+    }
+    rebased
+}
+
+fn render_terms(
+    terms: &[Term],
+    separate_lines: bool,
+) -> Option<(String, Vec<SourceRange>, Vec<Term>)> {
+    let mut text = String::new();
+    let mut offset = 0;
+    let mut natural = Vec::new();
+    let mut spans = Vec::new();
+    for (i, term) in terms.iter().enumerate() {
+        if let Some(previous) = i.checked_sub(1).map(|j| &terms[j]) {
+            let separator = if term.kind == "natural" {
+                if previous.kind == "natural" || separate_lines {
+                    "\n"
+                } else {
+                    ",\n"
+                }
+            } else if previous.kind == "natural" {
+                "\n, "
+            } else if separate_lines {
+                if text.ends_with('\\') {
+                    "\n\n"
+                } else {
+                    "\n"
+                }
+            } else {
+                ", "
+            };
+            text.push_str(separator);
+            offset += separator.len();
+        }
+        let raw = term.display();
+        let range = SourceRange {
+            start: offset,
+            length: raw.encode_utf16().count(),
+        };
+        if term.kind == "natural" {
+            natural.push(range);
+        }
+        spans.push(range);
+        text.push_str(&raw);
+        offset = range.end();
+    }
+    let parsed = parser::parse_source(&text, &natural, None);
+    (parsed.valid
+        && parsed.terms.len() == spans.len()
+        && parsed
+            .terms
+            .iter()
+            .zip(spans)
+            .all(|(t, r)| t.start >= r.start && t.start + t.length <= r.end()))
+    .then_some((text, natural, parsed.terms))
+}
+
 fn insertion_end(w: &Workspace, t: &Term) -> usize {
     let end = t.start + t.length;
     let Some(group) = &t.group else { return end };
@@ -966,11 +1442,29 @@ fn insertion_end(w: &Workspace, t: &Term) -> usize {
     }
     end
 }
+fn keep_contiguous_groups(w: &mut Workspace) {
+    for g in &mut w.groups {
+        let mut entered = false;
+        let mut exited = false;
+        for t in &w.active {
+            if t.kind != "natural" && g.members.contains(&t.id) {
+                if exited {
+                    g.members.retain(|id| id != &t.id);
+                }
+                entered = true;
+            } else if entered {
+                exited = true;
+            }
+        }
+    }
+}
+
 pub fn refresh(w: &mut Workspace) {
     let all: HashSet<_> = w
         .active
         .iter()
         .chain(&w.hidden)
+        .filter(|t| t.kind != "natural")
         .map(|t| t.id.clone())
         .collect();
     for g in &mut w.groups {
@@ -1112,7 +1606,10 @@ pub fn validate(p: &mut Project) -> Result<(), String> {
             {
                 return Err("视觉组位置数据损坏".into());
             }
-            let parsed = parser::parse(&w.text, Some(&w.active));
+            if !w.natural.is_empty() && parser::natural_bytes(&w.text, &w.natural).is_none() {
+                return Err("自然语言范围损坏".into());
+            }
+            let parsed = parser::parse_source(&w.text, &w.natural, Some(&w.active));
             if parsed.valid {
                 w.active = parsed.terms;
                 w.parsed_text = Some(w.text.clone())
@@ -1129,44 +1626,16 @@ pub fn validate(p: &mut Project) -> Result<(), String> {
     Ok(())
 }
 pub fn format_prompt(w: &Workspace) -> String {
-    let owner: HashMap<_, _> = w
-        .groups
-        .iter()
-        .filter(|g| g.description.as_ref().is_some_and(|d| !d.trim().is_empty()))
-        .flat_map(|g| g.members.iter().map(move |id| (id, g)))
-        .collect();
-    let mut output: Vec<_> = w
-        .active
-        .iter()
-        .filter(|t| !owner.contains_key(&t.id))
-        .map(Term::display)
-        .collect();
-    let mut seen = HashSet::new();
-    for t in &w.active {
-        if let Some(g) = owner.get(&t.id) {
-            if seen.insert(&g.id) {
-                let body = w
-                    .active
-                    .iter()
-                    .filter(|t| g.members.contains(&t.id))
-                    .map(Term::display)
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                let prefix = g.description.as_ref().unwrap().trim();
-                output.push(format!(
-                    "{}{}{}.",
-                    prefix,
-                    if prefix.ends_with(':') || prefix.ends_with('：') {
-                        " "
-                    } else {
-                        ": "
-                    },
-                    body.trim_end().trim_end_matches(['.', '。']).trim_end()
-                ));
-            }
-        }
-    }
-    output.join(", ")
+    render_terms(&w.active, false)
+        .or_else(|| render_terms(&w.active, true))
+        .map(|(text, _, _)| text)
+        .unwrap_or_else(|| {
+            w.active
+                .iter()
+                .map(Term::display)
+                .collect::<Vec<_>>()
+                .join(", ")
+        })
 }
 pub fn compare(before: &EditingState, after: &EditingState) -> Vec<Value> {
     let mut out = vec![];
@@ -1209,6 +1678,16 @@ pub fn compare(before: &EditingState, after: &EditingState) -> Vec<Value> {
                 (None, Some(y)) => add("新增", "—".into(), y.display()),
                 (Some(x), None) => add("删除", x.display(), "—".into()),
                 (Some(x), Some(y)) => {
+                    if (x.kind == "natural") != (y.kind == "natural") {
+                        let label = |t: &Term| {
+                            if t.kind == "natural" {
+                                "自然语言"
+                            } else {
+                                "词条"
+                            }
+                        };
+                        add("类型", label(x).into(), label(y).into());
+                    }
                     if x.base != y.base {
                         add("原文", x.base.clone(), y.base.clone())
                     }

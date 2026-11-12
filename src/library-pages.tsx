@@ -21,6 +21,7 @@ import {
   X,
   Stack,
   ArrowsOut,
+  Flask,
   ArrowLeft,
   Info,
 } from "@phosphor-icons/react";
@@ -1259,10 +1260,10 @@ export function LoraPage() {
     await app.act("lora.batch", { ids: selected, action, ...p });
     await load();
   };
-  const controller = async () => {
+  const controller = async (ids: string[], single = false) => {
     setBusy(true);
     try {
-      const result = await app.act<any>("lora.controller", { ids: selected });
+      const result = await app.act<any>("lora.controller", { ids });
       const answer = await app.confirm({
         title: "核对模型并添加到控制器",
         body: (
@@ -1286,16 +1287,24 @@ export function LoraPage() {
             </div>
           </>
         ),
-        confirm: "整批添加",
+        confirm: single ? "添加模型" : "整批添加",
       });
       if (answer === "confirm") {
-        await app.act("lora.controller", { ids: selected, confirm: true });
+        await app.act("lora.controller", { ids, confirm: true });
         app.notify("已添加到 LoRA 控制器");
       }
     } catch (e) {
       app.reportError(String(e));
     } finally {
       setBusy(false);
+    }
+  };
+  const insertTriggers = async (item: LoraAsset, createGroup: boolean) => {
+    try {
+      await app.act("lora.triggers.insert", { text: item.Triggers, name: item.Name, createGroup });
+      app.open(app.data.project.State.IsNegative ? "negative" : "positive");
+    } catch (e) {
+      app.reportError(String(e));
     }
   };
   const sources = () =>
@@ -1546,7 +1555,7 @@ export function LoraPage() {
               label="核对后整批加入控制器"
               className="primary"
               disabled={!selected.length || busy}
-              onClick={controller}
+              onClick={() => void controller(selected)}
             />
           </div>
         </Panel>
@@ -1644,7 +1653,9 @@ export function LoraPage() {
           actions={
             draft && (
               <>
-                <IconButton icon={ArrowsOut} label="试试该 LoRA 的效果" onClick={() => openProbe(draft.ModelKey,"lora")}/>
+                <IconButton icon={Flask} label="试试该 LoRA 的效果" onClick={() => openProbe(draft.ModelKey,"lora")}/>
+                <IconButton icon={ArrowUpRight} label="将当前 LoRA 加入控制器"
+                  disabled={busy} onClick={() => void controller([draft.Id], true)} />
                 <IconButton
                   icon={ArrowsOut}
                   label="展开模型资料"
@@ -1793,6 +1804,16 @@ export function LoraPage() {
                     />
                   </label>
                 </div>
+                <div className="lora-trigger-field">
+                <div className="lora-trigger-actions">
+                  <IconButton icon={Copy} label="复制触发词" disabled={!draft.Triggers.trim()}
+                    onClick={() => void navigator.clipboard.writeText(draft.Triggers)
+                      .then(() => app.notify("已复制触发词")).catch((e) => app.reportError(String(e)))} />
+                  <IconButton icon={Plus} label="插入触发词" disabled={!draft.Triggers.trim()}
+                    onClick={() => void insertTriggers(draft, false)} />
+                  <IconButton icon={Stack} label="将触发词作为组插入" disabled={!draft.Triggers.trim()}
+                    onClick={() => void insertTriggers(draft, true)} />
+                </div>
                 <Field label="触发词">
                   <textarea
                     rows={Math.max(
@@ -1806,6 +1827,7 @@ export function LoraPage() {
                     }
                   />
                 </Field>
+                </div>
                 <Field label="备注">
                   <textarea
                     rows={3}

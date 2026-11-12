@@ -29,8 +29,10 @@ export type Workspace = {
   Groups: Group[];
   Layout: string[];
   Caret: number;
+  SelectionEnd?: number;
   Scroll: number;
   ParsedText: string | null;
+  Natural?: { Start: number; Length: number }[];
 };
 export type EditingState = {
   Positive: Workspace;

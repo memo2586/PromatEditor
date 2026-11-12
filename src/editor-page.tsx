@@ -3,7 +3,7 @@ import { usePointerSort } from "./pointer-sort";
 import type { Workspace } from "./types";
 import { useListMotion } from "./motion";
 import { openProbe } from "./comfy-probe";
-import { caretPosition } from "./caret-position";
+import { usePromptCompletion } from "./prompt-completion";
 import { GenerateButton } from "./comfy-link";
 import { rememberPromptSelection } from "./prompt-insertion";
 import { useEffect, useLayoutEffect, useRef, useState, useMemo, type MouseEvent } from "react";
@@ -71,7 +71,6 @@ export function GroupForm({
   const app = useApp();
   const [name, setName] = useState(group?.Name || "");
   const [category, setCategory] = useState(group?.Category || "Extra");
-  const [description, setDescription] = useState(group?.Description || "");
   const [error, setError] = useState("");
   const w =
     app.data.project.State[
@@ -86,7 +85,7 @@ export function GroupForm({
         id: group?.Id,
         name,
         category,
-        description,
+        description: group?.Description,
       });
       if (!group && app.data.settings.AutoCollapseNewGroups) {
         const state = await rpc<any>("state.get");
@@ -131,13 +130,6 @@ export function GroupForm({
             placeholder="为这组词条起一个名字"
           />
         </Field>
-        <Field label="自然语言描述（可选）">
-          <input
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="例如：On the left"
-          />
-        </Field>
         <Field label="类别">
           <div className="category-grid">
             {categories.map((c) => (
@@ -153,14 +145,11 @@ export function GroupForm({
         </Field>
         <Field label="输出预览 · 实时更新">
           <pre className="output-preview">
-            {description.trim()
-              ? `${description.trim()}${/[:：]$/.test(description.trim()) ? " " : ": "}${body.replace(/[.。]\s*$/, "")}.`
-              : body || "请选择要归组的有效词条"}
+            {body || "请选择要归组的有效词条"}
           </pre>
         </Field>
         <Notice>
-          组名和类别仅用于整理；描述随复制和 Bridge
-          输出。修改组时保留成员与权重。
+          组名和类别用于整理。修改组时保留成员与权重。
         </Notice>
       </div>
       {error && <Notice error>{error}</Notice>}
@@ -258,12 +247,32 @@ export function FavoriteForm({
 }
 function TermForm({ term, onClose }: { term: Term; onClose: () => void }) {
   const app = useApp();
+  const natural = term.Kind === "natural";
   const [text, setText] = useState(term.Base);
   const [weight, setWeight] = useState(String(term.Weight));
   const [error, setError] = useState("");
+  const input = useRef<HTMLTextAreaElement>(null);
+  const saveButton = useRef<HTMLButtonElement>(null);
+  const composing = useRef(false);
+  const completionCaret = useRef<number | null>(null);
+  const completion = usePromptCompletion(input, (value, start, end) => {
+    const next = text.slice(0, start) + value + text.slice(end);
+    const caret = start + value.length;
+    if (next === text) input.current?.setSelectionRange(caret, caret);
+    else {
+      completionCaret.current = caret;
+      setText(next);
+    }
+  }, true);
+  useLayoutEffect(() => {
+    if (completionCaret.current !== null && input.current) {
+      input.current.setSelectionRange(completionCaret.current, completionCaret.current);
+      completionCaret.current = null;
+    }
+  }, [text]);
   return (
     <Modal
-      title="编辑词条"
+      title={natural ? "编辑自然语言提示词" : "编辑词条"}
       onClose={onClose}
       width={640}
       footer={
@@ -271,10 +280,16 @@ function TermForm({ term, onClose }: { term: Term; onClose: () => void }) {
           <span className="spacer" />
           <button onClick={onClose}>取消</button>
           <button
+            ref={saveButton}
             className="primary"
-            disabled={!term.Editable}
+            disabled={natural ? !text.trim() : !term.Editable}
             onClick={async () => {
               try {
+                if (natural) {
+                  await app.act("editor.natural.edit", { id: term.Id, text });
+                  onClose();
+                  return;
+                }
                 const n = Number(weight);
                 if (!weight.trim() || !Number.isFinite(n))
                   throw Error("权重必须是有限十进制数");
@@ -303,14 +318,37 @@ function TermForm({ term, onClose }: { term: Term; onClose: () => void }) {
     >
       <Field label="原文">
         <textarea
+          ref={input}
+          data-default-focus
+          data-completion-open={completion.open}
           rows={4}
           value={text}
-          readOnly={!term.Editable || term.Kind === "lora"}
-          onChange={(e) => setText(e.target.value)}
+          readOnly={!natural && (!term.Editable || term.Kind === "lora")}
+          onChange={(e) => {
+            setText(e.currentTarget.value);
+            if (!natural && !composing.current) void completion.search(e.currentTarget);
+          }}
+          onCompositionStart={() => {
+            composing.current = true;
+            completion.close();
+          }}
+          onCompositionEnd={(e) => {
+            composing.current = false;
+            if (!natural) void completion.search(e.currentTarget);
+          }}
+          onSelect={(e) => completion.onSelect(e.currentTarget)}
+          onBlur={completion.close}
+          onKeyDown={(e) => {
+            if (natural && e.key === "Enter" && !e.shiftKey && !composing.current && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              if (!e.repeat) saveButton.current?.click();
+            } else completion.onKeyDown(e);
+          }}
           className="mono"
         />
+        {completion.popup}
       </Field>
-      <Field label="权重">
+      {!natural && <Field label="权重">
         <input
           type="number"
           step="0.1"
@@ -318,14 +356,80 @@ function TermForm({ term, onClose }: { term: Term; onClose: () => void }) {
           readOnly={!term.Editable}
           onChange={(e) => setWeight(e.target.value)}
         />
-      </Field>
-      {!term.Editable && (
+      </Field>}
+      {!natural && !term.Editable && (
         <Notice>复杂或语义不明确的语法仅支持在原文区域编辑。</Notice>
       )}
       {error && <Notice error>{error}</Notice>}
     </Modal>
   );
 }
+function InlineTermEditor({ initial, save, cancel }: {
+  initial: string;
+  save: (text: string) => Promise<void>;
+  cancel: () => void;
+}) {
+  const [text, setText] = useState(initial);
+  const input = useRef<HTMLTextAreaElement>(null);
+  const composing = useRef(false);
+  const saving = useRef(false);
+  const caret = useRef<number | null>(null);
+  const completion = usePromptCompletion(input, (value, start, end) => {
+    const next = text.slice(0, start) + value + text.slice(end);
+    if (next === text) input.current?.setSelectionRange(start + value.length, start + value.length);
+    else {
+      caret.current = start + value.length;
+      setText(next);
+    }
+  });
+  useLayoutEffect(() => {
+    const field = input.current;
+    if (!field) return;
+    field.focus({ preventScroll: true });
+    field.setSelectionRange(0, field.value.length, "forward");
+  }, []);
+  useLayoutEffect(() => {
+    if (caret.current !== null) {
+      input.current?.setSelectionRange(caret.current, caret.current);
+      caret.current = null;
+    }
+  }, [text]);
+  return <>
+    <textarea
+      ref={input} rows={1} wrap="off" className="inline-term-input" aria-label="词条原文"
+      value={text} spellCheck={false}
+      onClick={(e) => e.stopPropagation()}
+      onDoubleClick={(e) => e.stopPropagation()}
+      onChange={(e) => {
+        setText(e.currentTarget.value);
+        if (!composing.current) void completion.search(e.currentTarget);
+      }}
+      onCompositionStart={() => { composing.current = true; completion.close(); }}
+      onCompositionEnd={(e) => { composing.current = false; void completion.search(e.currentTarget); }}
+      onSelect={(e) => completion.onSelect(e.currentTarget)}
+      onBlur={() => {
+        completion.close();
+        cancel();
+        if (!saving.current && text.trim() && text !== initial) void save(text);
+      }}
+      onKeyDown={(e) => {
+        e.stopPropagation();
+        if (composing.current || e.nativeEvent.isComposing) return;
+        completion.onKeyDown(e);
+        if (e.defaultPrevented || saving.current) return;
+        if (e.key === "Escape") cancel();
+        if (e.key === "Enter") {
+          e.preventDefault();
+          saving.current = true;
+          completion.close();
+          void save(text).finally(() => { saving.current = false; });
+        }
+      }}
+    />
+    {completion.popup}
+  </>;
+}
+
 export function EditorPage() {
   const app = useApp();
   const state = app.data.project.State;
@@ -334,26 +438,44 @@ export function EditorPage() {
   const [draft, setDraft] = useState(w.Text);
   const draftRef = useRef(w.Text);
   const pending = useRef(false);
+  const savingText = useRef<Promise<unknown> | null>(null);
+  type Selection = [number, number];
+  const beforeInput = useRef<Selection | null>(null);
+  const draftView = useRef<{ before: Selection; after: Selection; scroll: number } | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const source = useRef<HTMLTextAreaElement>(null);
-  const completionPopup = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const input = source.current;
+    if (!input) return;
+    const capture = () => { beforeInput.current = [input.selectionStart, input.selectionEnd]; };
+    input.addEventListener("beforeinput", capture);
+    return () => input.removeEventListener("beforeinput", capture);
+  }, []);
   // List navigation mirrors a range into the source without replacing batch selection.
   const sourceSelectionProgrammatic = useRef(false);
-  const completionSelection = useRef<{
-    text: string; caret: number; negative: boolean; scrollTop: number; scrollLeft: number;
+  const sourceFollowsList = useRef(false);
+  const sourceSelection = useRef<{
+    text: string; start: number; end: number; negative: boolean; scrollTop: number; scrollLeft: number;
   } | null>(null);
-  useLayoutEffect(() => {
-    const selection = completionSelection.current;
+  const applySourceSelection = () => {
+    const selection = sourceSelection.current;
     const input = source.current;
-    if (selection && selection.negative !== negative) completionSelection.current = null;
-    if (!selection || !input || selection.negative !== negative || selection.text !== draft) return;
-    completionSelection.current = null;
+    if (selection && selection.negative !== negative) sourceSelection.current = null;
+    if (!selection || !input || selection.negative !== negative || selection.text !== input.value) return;
+    sourceSelection.current = null;
     sourceSelectionProgrammatic.current = true;
     input.focus({ preventScroll: true });
-    input.setSelectionRange(selection.caret, selection.caret);
+    input.setSelectionRange(selection.start, selection.end);
     input.scrollTop = selection.scrollTop;
     input.scrollLeft = selection.scrollLeft;
-  });
+  };
+  useLayoutEffect(applySourceSelection);
+  const restoreSourceSelection = (next: Workspace, start = next.Caret, end = next.SelectionEnd ?? start, scrollTop = next.Scroll) => {
+    sourceSelection.current = {
+      text: next.Text, start, end, negative, scrollTop, scrollLeft: source.current?.scrollLeft ?? 0,
+    };
+    applySourceSelection();
+  };
   const sourceScroll = useRef<HTMLDivElement>(null);
   const sourceHighlights = useRef<HTMLDivElement>(null);
   const [lineHeights, setLineHeights] = useState<number[]>([]);
@@ -365,6 +487,23 @@ export function EditorPage() {
       return { line, at };
     });
   }, [draft]);
+  const naturalLines = useMemo(() => {
+    const ranges = w.Natural || [];
+    if (!ranges.length) return new Map<number, number>();
+    let prefix = 0;
+    while (prefix < Math.min(draft.length, w.Text.length) && draft[prefix] === w.Text[prefix]) prefix++;
+    let suffix = 0;
+    while (suffix < Math.min(draft.length, w.Text.length) - prefix &&
+           draft[draft.length - 1 - suffix] === w.Text[w.Text.length - 1 - suffix]) suffix++;
+    return new Map(ranges.flatMap(({ Start, Length }) => {
+      const at = Start >= w.Text.length - suffix ? Start + draft.length - w.Text.length : Math.min(Start, prefix);
+      if (Start + Length <= prefix) return [[draft.lastIndexOf("\n", Start - 1) + 1, Start]];
+      if (at < 0 || at >= draft.length) return [];
+      const lineStart = at === 0 ? 0 : draft.lastIndexOf("\n", at - 1) + 1;
+      const line = draft.slice(lineStart).split("\n", 1)[0];
+      return line.trim() ? [[lineStart, lineStart + line.length - line.trimStart().length]] : [];
+    }));
+  }, [draft, w.Text, w.Natural]);
   useEffect(() => {
     const mirror = sourceHighlights.current;
     if (!mirror) return;
@@ -393,6 +532,8 @@ export function EditorPage() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all");
   const [hidden, setHidden] = useState(false);
+  const [inlineEdit, setInlineEdit] = useState<{ term: string } | { group: string } | null>(null);
+  useEffect(() => setInlineEdit(null), [negative, hidden, app.page]);
   const [selected, setSelected] = useState<string[]>([]);
   useLayoutEffect(() => { rememberPromptSelection(negative, selected); }, [negative, selected]);
   const groupClickTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -423,20 +564,23 @@ export function EditorPage() {
   const [lookupSelected,setLookupSelected]=useState(0);
   const [lookupQuery, setLookupQuery] = useState("");
   const [lookupItems, setLookupItems] = useState<Lexeme[]>([]);
-  const [completion, setCompletion] = useState<{
-    items: Lexeme[];
-    caret: number;
-    at: number;
-    length: number;
-    index: number;
-    left: number;
-    top: number;
-  } | null>(null);
   const composition = useRef(false);
+  const completion = usePromptCompletion(source, async (text, start, end) => {
+    const input = source.current;
+    if (!input || composition.current) return;
+    const scroll = input.scrollTop;
+    const result = await safe("editor.insert", {
+      text, start, length: end - start, completion: true,
+    });
+    if (result) restoreSourceSelection(result.project.State[negative ? "Negative" : "Positive"],
+      start + text.length, start + text.length, scroll);
+  });
   const [menu, setMenu] = useState<{
     items: MenuItem[];
     x: number;
     y: number;
+    width?: number;
+    className?: string;
   } | null>(null);
   const [dragging, setDragging] = useState(false);
   const cancelPointerDrag = usePointerSort(
@@ -447,7 +591,6 @@ export function EditorPage() {
   const [showSource, setShowSource] = useState(false);
   const [split, setSplit] = useState<{ width?: number; height?: number }>({});
   const splitDrag = useRef(false);
-  const serial = useRef(0);
   const workspaceUi = useRef<
     Record<
       string,
@@ -460,11 +603,23 @@ export function EditorPage() {
       clearTimeout(timer.current);
       timer.current = null;
     }
-    if (pending.current) {
+    while (savingText.current || pending.current) {
+      if (savingText.current) {
+        await savingText.current;
+        continue;
+      }
       pending.current = false;
-      const result = await rpc<any>("editor.text", { text: draftRef.current });
-      await app.refresh();
-      if (result.error) setCompletion(null);
+      const view = draftView.current;
+      draftView.current = null;
+      const text = draftRef.current;
+      const saving = app.act<{ error: string | null }>("editor.text", { text, ...view });
+      savingText.current = saving;
+      try {
+        const result = await saving;
+        if (result.error && draftRef.current === text) completion.close();
+      } finally {
+        savingText.current = null;
+      }
     }
   };
   app.flush.current = flush;
@@ -486,15 +641,16 @@ export function EditorPage() {
       setDraft(w.Text);
       draftRef.current = w.Text;
       pending.current = false;
-      setCompletion(null);
+      completion.close();
+      sourceFollowsList.current = false;
       requestAnimationFrame(() => {
         if (source.current) {
           sourceSelectionProgrammatic.current = true;
-          source.current.selectionStart = source.current.selectionEnd = w.Caret;
+          source.current.setSelectionRange(w.Caret, w.SelectionEnd ?? w.Caret);
           source.current.scrollTop = w.Scroll;
         }
       });
-    } else if (!pending.current && draftRef.current !== w.Text) {
+    } else if (!pending.current && !savingText.current && draftRef.current !== w.Text) {
       setDraft(w.Text);
       draftRef.current = w.Text;
     }
@@ -517,10 +673,18 @@ export function EditorPage() {
       app.reportError(String(e));
     }
   };
+  const currentWorkspace = (result: { project: typeof app.data.project }) =>
+    result.project.State[negative ? "Negative" : "Positive"];
+  const history = async (method: "editor.undo" | "editor.redo", fromSource: boolean) => {
+    completion.close();
+    const result = await safe(method);
+    if (result && fromSource) restoreSourceSelection(currentWorkspace(result));
+  };
   const mirrorSourceCaret = (term: Term) => {
     const textarea = source.current;
     if (!textarea) return;
     const { scrollTop, scrollLeft } = textarea;
+    sourceFollowsList.current = true;
     sourceSelectionProgrammatic.current = true;
     textarea.setSelectionRange(term.Start, term.Start);
     textarea.focus({ preventScroll: true });
@@ -614,6 +778,9 @@ export function EditorPage() {
     selected.includes(t.Id),
   );
   const activeSelected = w.Active.filter((t) => selected.includes(t.Id));
+  const hasNaturalSelection = activeSelected.some((t) => t.Kind === "natural");
+  const selectedIds = selectedTerms.map((t) => t.Id);
+  const weightIds = activeSelected.filter((t) => t.Kind !== "natural").map((t) => t.Id);
   useEffect(() => {
     if (selectedTerms.length > 0) {
       const wVal = selectedTerms[0].Weight;
@@ -661,11 +828,11 @@ export function EditorPage() {
       app.reportError(String(e));
     }
   };
-  const locate = () => {
-    const t = activeSelected[0];
+  const locateTerm = (t = activeSelected[0]) => {
     if (!t || !source.current) return;
     setShowSource(true);
     requestAnimationFrame(() => {
+      sourceFollowsList.current = false;
       sourceSelectionProgrammatic.current = true;
       source.current!.focus();
       source.current!.setSelectionRange(t.Start, t.Start + t.Length);
@@ -700,14 +867,115 @@ export function EditorPage() {
       ? collapsedRef.current.filter((id) => id !== g.Id)
       : [...collapsedRef.current, g.Id],
   );
+  const bindNatural = async (start: number, end: number, fromSource = false, ids?: string[]) => {
+    completion.close();
+    const result = await safe("editor.natural.bind", { start, end, ids });
+    if (result && fromSource) restoreSourceSelection(currentWorkspace(result));
+  };
+  const unbindNatural = (start: number) => safe("editor.natural.unbind", { start });
+  const sourceMenu = (e: MouseEvent<HTMLTextAreaElement>) => {
+    const input = e.currentTarget;
+    const { selectionStart: start, selectionEnd: end } = input;
+    const lines = [...(sourceHighlights.current?.children || [])];
+    const line = lines.findIndex((el) => {
+      const rect = el.getBoundingClientRect();
+      return e.clientY >= rect.top && e.clientY < rect.bottom;
+    });
+    const lineStart = line >= 0 ? sourceLines[line].at
+      : (e.clientX === 0 && e.clientY === 0 ? draft.slice(0, start).lastIndexOf("\n") + 1 : -1);
+    const at = naturalLines.get(lineStart);
+    if (at === undefined && !draft.slice(start, end).trim()) return;
+    e.preventDefault();
+    completion.close();
+    setMenu({
+      x: e.clientX, y: e.clientY, width: 220, className: "source-action-menu",
+      items: at === undefined
+        ? [{ label: "创建自然语言提示词", action: () => bindNatural(start, end, true) }]
+        : [{ label: "取消自然语言绑定", action: () => unbindNatural(at) }],
+    });
+  };
+  const symbolMenu = (e: MouseEvent<HTMLButtonElement>) => {
+    const bounds = e.currentTarget.getBoundingClientRect();
+    const clean = async (action: "commas" | "escape") => {
+      const result = await safe("editor.symbols.clean", { action });
+      if (result) app.notify(result.changes ? `已整理 ${result.changes} 处符号 · Ctrl + Z 撤销` : "没有需要整理的符号");
+    };
+    setMenu({
+      x: bounds.right - 220, y: bounds.bottom + 4, width: 220, className: "source-action-menu",
+      items: [
+        { label: "清理重复逗号", action: () => clean("commas") },
+        { label: "转义未配对的符号", action: () => clean("escape") },
+      ],
+    });
+  };
+  const structuredTextRange = () => {
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed || !selection.rangeCount) return null;
+    const range = selection.getRangeAt(0);
+    const offset = (container: Node, at: number) => {
+      const span = (container instanceof Element ? container : container.parentElement)?.closest(".term-content");
+      if (!span || !termListRef.current?.contains(span)) return null;
+      const term = w.Active.find((t) => t.Id === span.closest<HTMLElement>(".term-row")?.dataset.termId);
+      if (!term || draft.slice(term.BaseStart, term.BaseStart + term.BaseLength) !== term.Base) return null;
+      const before = document.createRange();
+      before.selectNodeContents(span);
+      before.setEnd(container, at);
+      return term.BaseStart + before.toString().length;
+    };
+    const start = offset(range.startContainer, range.startOffset);
+    const end = offset(range.endContainer, range.endOffset);
+    return start !== null && end !== null && start < end ? { start, end } : null;
+  };
+  const structuredTermRange = (ids: string[]) => {
+    const terms = w.Active.filter((t) => ids.includes(t.Id));
+    if (!terms.length || terms.some((t) => t.Kind === "natural")) return null;
+    const first = w.Active.indexOf(terms[0]);
+    const last = terms[terms.length - 1];
+    if (w.Active[first + terms.length - 1] !== last) return null;
+    return { start: terms[0].Start, end: last.Start + last.Length };
+  };
+  const editTerm = (term: Term) => {
+    if (term.Kind === "normal" && term.Editable && app.data.valid) {
+      setInlineEdit({ term: term.Id });
+    } else {
+      app.modal(<TermForm term={term} onClose={() => app.modal(null)} />);
+    }
+  };
+  const beginGroupTerm = (g: Group) => setInlineEdit({ group: g.Id });
+  const addToSelectedGroup = () => {
+    if (hidden || !app.data.valid || menu) return false;
+    const groups = w.Groups.filter((g) => selected.includes(`group:${g.Id}`));
+    if (groups.length !== 1 || !w.Active.some((t) => groups[0].Members.includes(t.Id))) return false;
+    beginGroupTerm(groups[0]);
+    return true;
+  };
   const termMenu = (t: Term, e: MouseEvent) => {
     e.preventDefault();
+    const textRange = structuredTextRange();
     if (!selected.includes(t.Id)) setSelected([t.Id]);
-    const target = selected.includes(t.Id) ? selected : [t.Id];
+    const target = selected.includes(t.Id) ? selectedTerms.map((t) => t.Id) : [t.Id];
+    if (t.Kind === "natural") {
+      setMenu({
+        x: e.clientX, y: e.clientY, width: 220, className: "source-action-menu",
+        items: [
+          ...(!hidden ? [{ label: "取消自然语言绑定", action: () => unbindNatural(t.Start) }] : []),
+          { label: hidden ? "恢复所选项" : "隐藏所选项", action: () =>
+            safe(hidden ? "editor.restore" : "editor.hide", { ids: target }) },
+          { label: "删除所选项", danger: true, action: () => safe("editor.delete", { ids: target }) },
+        ],
+      });
+      return;
+    }
+    const termRange = structuredTermRange(target);
+    const range = textRange || termRange;
+    const wholeTerms = !textRange || (termRange && textRange.start === termRange.start && textRange.end === termRange.end);
     setMenu({
       x: e.clientX,
       y: e.clientY,
       items: [
+        ...(!hidden ? [{ label: "创建自然语言提示词", disabled: !range, action: () => {
+          if (range) void bindNatural(range.start, range.end, false, wholeTerms ? target : undefined);
+        } }] : []),
         {
           label: "试试该词条的效果…",
           disabled: hidden,
@@ -715,17 +983,14 @@ export function EditorPage() {
         },
         {
           label: "编辑词条…",
-          action: () =>
-            app.modal(<TermForm term={t} onClose={() => app.modal(null)} />),
+          action: () => editTerm(t),
         },
         {
           label: "定位原文",
           disabled: hidden,
           action: () => {
             setSelected([t.Id]);
-            sourceSelectionProgrammatic.current = true;
-            source.current?.focus();
-            source.current?.setSelectionRange(t.Start, t.Start + t.Length);
+            locateTerm(t);
           },
         },
         {
@@ -736,11 +1001,11 @@ export function EditorPage() {
         {
           label: "取消权重",
           disabled: hidden || !t.Editable,
-          action: () => safe("editor.weight", { ids: target, value: null }),
+          action: () => safe("editor.weight", { ids: target.filter((id) => weightIds.includes(id) || id === t.Id), value: null }),
         },
         {
           label: "创建视觉组…",
-          disabled: hidden,
+          disabled: hidden || w.Active.some((term) => term.Kind === "natural" && target.includes(term.Id)),
           action: () => groupForm(undefined, target),
         },
         {
@@ -763,10 +1028,13 @@ export function EditorPage() {
     const inactive = g.Members.filter((id) =>
       w.Hidden.some((t) => t.Id === id),
     );
+    const range = structuredTermRange(active);
     setMenu({
       x: e.clientX,
       y: e.clientY,
       items: [
+        { label: "添加提示词", shortcut: "I", disabled: hidden || !app.data.valid || !active.length,
+          action: () => beginGroupTerm(g) },
         {
           label: collapsed.includes(g.Id) ? "展开组" : "收起组",
           action: () => toggleGroup(g),
@@ -774,9 +1042,13 @@ export function EditorPage() {
         {
           label: "选择整组有效项",
           disabled: !active.length,
-          action: () => setSelected(active),
+          action: () => setSelected([...active, `group:${g.Id}`]),
         },
-        { label: "修改组名 / 类别 / 描述…", action: () => groupForm(g) },
+        { label: "修改组名 / 类别…", action: () => groupForm(g) },
+        ...(!hidden ? [{
+          label: "创建自然语言提示词", disabled: !range,
+          action: () => { if (range) void bindNatural(range.start, range.end, false, active); },
+        }] : []),
         {
           label: "隐藏整组有效项",
           disabled: !active.length,
@@ -815,92 +1087,6 @@ export function EditorPage() {
       ],
     });
   };
-  const completionSearch = async (text: string, caret: number) => {
-    const before = text.slice(0, caret);
-    const boundary = Math.max(
-      before.lastIndexOf(","),
-      before.lastIndexOf("\n"),
-      before.lastIndexOf(";"),
-      before.lastIndexOf("，"),
-    );
-    let at = boundary + 1;
-    while (at < caret && /[\s(]/.test(text[at])) at++;
-    let end = caret;
-    while (end < text.length && !/[,;，；\n)]/.test(text[end])) end++;
-    const colon = text.slice(at, end).lastIndexOf(":");
-    if (colon >= 0) end = at + colon;
-    const q = text.slice(at, Math.min(caret, end)).trim();
-    const version = ++serial.current;
-    if (q.length < 2 || q.startsWith("<")) {
-      setCompletion(null);
-      return;
-    }
-    try {
-      const items = await rpc<Lexeme[]>("lexicon.search", { text: q });
-      if (version !== serial.current || composition.current || !items.length)
-        return;
-      const input = source.current;
-      if (!input || document.activeElement !== input || input.value !== text || input.selectionStart !== caret) return;
-      const anchor = caretPosition(input, caret);
-      setCompletion({ items: items.slice(0, 12), caret, at, length: end - at, index: 0,
-        left: Math.max(8, Math.min(anchor.left, innerWidth - 312)),
-        top: anchor.top + anchor.height + 4 });
-    } catch {
-      setCompletion(null);
-    }
-  };
-  useLayoutEffect(() => {
-    if (!completion || !source.current || !completionPopup.current) return;
-    const input = source.current;
-    const popup = completionPopup.current;
-    const position = () => {
-      const anchor = caretPosition(input, input.selectionStart);
-      const rect = input.getBoundingClientRect();
-      if (anchor.top + anchor.height < rect.top || anchor.top > rect.bottom) {
-        setCompletion(null); return;
-      }
-      const height = popup.offsetHeight;
-      const top = anchor.top + anchor.height + 4 + height <= innerHeight - 8
-        ? anchor.top + anchor.height + 4 : Math.max(8, anchor.top - height - 4);
-      popup.style.left = Math.max(8, Math.min(anchor.left, innerWidth - popup.offsetWidth - 8)) + 'px';
-      popup.style.top = Math.max(8, Math.min(top, innerHeight - height - 8)) + 'px';
-    };
-    position();
-    const observer = new ResizeObserver(position);
-    observer.observe(input); observer.observe(popup);
-    window.addEventListener('resize', position);
-    window.addEventListener('scroll', position, true);
-    return () => { observer.disconnect(); window.removeEventListener('resize', position); window.removeEventListener('scroll', position, true); };
-  }, [completion]);
-  const chooseCompletion = async (i: number) => {
-    if (!completion || composition.current) return;
-    const item = completion.items[i];
-    const { at, length } = completion;
-    const input = source.current;
-    if (!input) return;
-    // React moves the caret to the end when the controlled textarea value changes.
-    // Restore it after the completed text has actually reached the DOM.
-    completionSelection.current = {
-      text: draftRef.current.slice(0, at) + item.Text + draftRef.current.slice(at + length),
-      caret: at + item.Text.length,
-      negative,
-      scrollTop: input.scrollTop,
-      scrollLeft: input.scrollLeft,
-    };
-    setCompletion(null);
-    serial.current++;
-    try {
-      await app.act("editor.insert", {
-        text: item.Text,
-        start: at,
-        length,
-        completion: true,
-      });
-    } catch (e) {
-      completionSelection.current = null;
-      app.reportError(String(e));
-    }
-  };
   useEffect(() => {
     if (!lookup) return;
     let alive = true;
@@ -925,9 +1111,17 @@ export function EditorPage() {
       )
         return;
       const mod = e.ctrlKey || e.metaKey;
+      const raw = source.current;
+      const fromSource = e.target === raw;
       const isText = ["TEXTAREA", "INPUT"].includes(
         (e.target as HTMLElement).tagName,
       );
+      if (!mod && !e.altKey && !e.shiftKey && e.key === "i" && !isText &&
+          !(e.target as HTMLElement).isContentEditable && (e.target as HTMLElement).tagName !== "SELECT" &&
+          addToSelectedGroup()) {
+        e.preventDefault();
+        return;
+      }
       if (mod && !e.shiftKey && !e.altKey && ["d", "x"].includes(e.key.toLowerCase()) && selected.length) {
         const element = e.target as HTMLElement;
         const raw = source.current;
@@ -952,7 +1146,7 @@ export function EditorPage() {
       }
       if (mod && !e.shiftKey && e.key.toLowerCase() === "z") {
         e.preventDefault();
-        void safe("editor.undo");
+        void history("editor.undo", fromSource);
       }
       if (
         mod &&
@@ -960,28 +1154,35 @@ export function EditorPage() {
           (e.shiftKey && e.key.toLowerCase() === "z"))
       ) {
         e.preventDefault();
-        void safe("editor.redo");
+        void history("editor.redo", fromSource);
       }
       if (mod && ["ArrowUp", "ArrowDown"].includes(e.key)) {
-        e.preventDefault();
-        let target = activeSelected.map((t) => t.Id);
-        if (isText && source.current) {
-          const t = w.Active.find(
-            (t) =>
-              source.current!.selectionStart >= t.Start &&
-              source.current!.selectionStart <= t.Start + t.Length,
-          );
-          if (t) target = [t.Id];
+        if (isText && !fromSource) return;
+        let target = activeSelected;
+        if (raw && fromSource && !sourceFollowsList.current) {
+          const { selectionStart, selectionEnd } = raw;
+          target = w.Active.filter((t) => selectionStart === selectionEnd
+            ? selectionStart >= t.Start && selectionStart <= t.Start + t.Length
+            : selectionStart < t.Start + t.Length && selectionEnd > t.Start);
         }
-        if (target.length)
-          void safe("editor.weight", {
-            ids: target,
-            value: app.data.settings.Step * (e.key === "ArrowUp" ? 1 : -1),
-            relative: true,
-          });
+        const ids = target.filter((t) => t.Kind !== "natural").map((t) => t.Id);
+        if (!ids.length) return;
+        e.preventDefault();
+        completion.close();
+        const scroll = raw?.scrollTop;
+        void safe("editor.weight", {
+          ids,
+          value: app.data.settings.Step * (e.key === "ArrowUp" ? 1 : -1),
+          relative: true,
+        }).then((result) => {
+          if (!result || !fromSource || document.activeElement !== raw) return;
+          const next = currentWorkspace(result);
+          const t = next.Active.find((term) => term.Id === ids[0]);
+          if (t) restoreSourceSelection(next, t.Start, t.Start, scroll);
+        });
       }
       if (e.key === "Escape") {
-        setCompletion(null);
+        completion.close();
         setDragging(false);
         cancelPointerDrag();
         setMenu(null);
@@ -990,7 +1191,7 @@ export function EditorPage() {
     };
     document.addEventListener("keydown", key);
     return () => document.removeEventListener("keydown", key);
-  }, [selected, w, app.page, app.data.settings]);
+  }, [selected, w, app.page, app.data.settings, app.data.valid, hidden, menu]);
   const dragAllowed = app.data.valid && !hidden && !query && filter === "all";
   const drop = (
     e: React.DragEvent,
@@ -1028,17 +1229,19 @@ export function EditorPage() {
       key={t.Id}
       role="row"
       aria-selected={selected.includes(t.Id)}
-      className={`term-row ${group ? "member" : ""} ${selected.includes(t.Id) ? "is-selected" : ""} ${!t.Editable ? "readonly" : ""}`}
+      className={`term-row ${group ? "member" : ""} ${selected.includes(t.Id) ? "is-selected" : ""} ${!t.Editable ? "readonly" : ""} ${t.Kind === "natural" ? "natural-term" : ""}`}
       data-motion-id={`term:${t.Id}`}
       data-term-id={t.Id}
       tabIndex={-1}
       onMouseDown={(e) => {
-        if (!(e.target as HTMLElement).closest("button,input,.term-handle")) e.preventDefault();
+        if (!(e.target as HTMLElement).closest("button,input,textarea,.term-handle") &&
+            (e.button !== 0 || !(e.target as HTMLElement).closest(".term-content") || e.ctrlKey || e.metaKey || e.shiftKey)) e.preventDefault();
       }}
-      onClick={(e) => select(t.Id, e)}
-      onDoubleClick={() =>
-        app.modal(<TermForm term={t} onClose={() => app.modal(null)} />)
-      }
+      onClick={(e) => {
+        if (hidden) e.currentTarget.focus({ preventScroll: true });
+        if (!structuredTextRange()) select(t.Id, e);
+      }}
+      onDoubleClick={() => editTerm(t)}
       onContextMenu={(e) => termMenu(t, e)}
       onDragOver={(e) => {
         if (dragAllowed) e.preventDefault();
@@ -1073,9 +1276,15 @@ export function EditorPage() {
         <DotsSixVertical size={16} />
       </span>
       <span className="term-text mono" title={t.Raw}>
-        {t.Base}
+        {t.Kind === "natural" && <span className="natural-term-label">自然语言</span>}
+        {inlineEdit && "term" in inlineEdit && inlineEdit.term === t.Id
+          ? <InlineTermEditor initial={t.Base} cancel={() => setInlineEdit(null)} save={async (text) => {
+              if (await safe("editor.term.edit", { id: t.Id, text }))
+                setInlineEdit((edit) => edit && "term" in edit && edit.term === t.Id ? null : edit);
+            }} />
+          : <span className="term-content">{t.Base}</span>}
       </span>
-      <span
+      {t.Kind !== "natural" && <><span
         className="term-translation"
         title={app.data.matches[t.Id]?.Translation}
       >
@@ -1086,7 +1295,7 @@ export function EditorPage() {
       </span>
       <span className="term-weight mono">
         {t.Weight.toFixed(1).replace(/(\.\d*?[1-9])0+$/, "$1")}
-      </span>
+      </span></>}
       <div className="row-actions">
         <IconButton
           icon={hidden ? Eye : EyeSlash}
@@ -1137,6 +1346,7 @@ export function EditorPage() {
           view.Active.some((t) => t.Id === id),
         ).length;
         const collapsedNow = collapsed.includes(g.Id);
+        const adding = inlineEdit && "group" in inlineEdit && inlineEdit.group === g.Id;
         const isGroupSelected =
           selected.includes(`group:${g.Id}`) ||
           (members.length > 0 && members.every((m) => selected.includes(m.Id)));
@@ -1279,13 +1489,19 @@ export function EditorPage() {
                 />
               </div>
             </div>
-            <CollapsibleGroup open={!collapsedNow && members.length > 0}>
+            <CollapsibleGroup open={!!adding || (!collapsedNow && members.length > 0)}>
               {members.map((t) => row(t, g))}
-              {members.length > 0 && g.Description && (
-                <div className="group-description">
-                  <span>{g.Description}</span>
+              {adding && <div className="term-row member" role="row">
+                <div className="term-text">
+                  <InlineTermEditor initial="" cancel={() => setInlineEdit(null)} save={async (text) => {
+                    if (!text.trim()) { setInlineEdit(null); return; }
+                    if (await safe("editor.group.append", { id: g.Id, text })) {
+                      if (collapsedRef.current.includes(g.Id)) await toggleGroup(g);
+                      setInlineEdit((edit) => edit && "group" in edit && edit.group === g.Id ? null : edit);
+                    }
+                  }} />
                 </div>
-              )}
+              </div>}
             </CollapsibleGroup>
           </section>,
           <div
@@ -1524,7 +1740,7 @@ export function EditorPage() {
           />
           <Panel
             title="原文编辑"
-            actions={<span className="hint">可直接输入</span>}
+            actions={<button type="button" className="source-symbols" aria-haspopup="menu" onClick={symbolMenu}>符号整理 <CaretDown size={12} /></button>}
             className="source-panel"
           >
             <div className="source-editor" ref={sourceScroll}>
@@ -1572,7 +1788,7 @@ export function EditorPage() {
                   }
                   parts.push(line.slice(cursor) || (line ? "" : " "));
                   return (
-                    <div key={i}>{parts}</div>
+                    <div key={i} className={naturalLines.has(at) ? "source-natural-line" : undefined}>{parts}</div>
                   );
                 })}
               </div>
@@ -1582,12 +1798,22 @@ export function EditorPage() {
                 value={draft}
                 spellCheck={false}
                 wrap="soft"
+                onContextMenu={sourceMenu}
                 onPointerDown={() => {
                   sourceSelectionProgrammatic.current = false;
+                  sourceFollowsList.current = false;
                 }}
                 onChange={(e) => {
                   sourceSelectionProgrammatic.current = false;
-                  const text = e.target.value;
+                  sourceFollowsList.current = false;
+                  const input = e.currentTarget;
+                  const text = input.value;
+                  const after: Selection = [input.selectionStart, input.selectionEnd];
+                  draftView.current = {
+                    before: draftView.current?.before ?? beforeInput.current ?? [w.Caret, w.SelectionEnd ?? w.Caret],
+                    after, scroll: input.scrollTop,
+                  };
+                  beforeInput.current = null;
                   draftRef.current = text;
                   setDraft(text);
                   pending.current = true;
@@ -1596,32 +1822,30 @@ export function EditorPage() {
                     () => void flush().catch((e) => app.reportError(String(e))),
                     180,
                   );
-                  if (!composition.current)
-                    void completionSearch(text, e.target.selectionStart);
+                  if (!composition.current && !naturalLines.has(text.slice(0, input.selectionStart).lastIndexOf("\n") + 1))
+                    void completion.search(input);
+                  else completion.close();
                 }}
                 onCompositionStart={() => {
                   composition.current = true;
-                  setCompletion(null);
+                  completion.close();
                   void rpc("editor.composition", { active: true });
                 }}
                 onCompositionEnd={(e) => {
                   composition.current = false;
                   void rpc("editor.composition", { active: false });
-                  void completionSearch(
-                    e.currentTarget.value,
-                    e.currentTarget.selectionStart,
-                  );
+                  const input = e.currentTarget;
+                  if (!naturalLines.has(input.value.slice(0, input.selectionStart).lastIndexOf("\n") + 1))
+                    void completion.search(input);
                 }}
-                onBlur={() => {
-                  setTimeout(() => setCompletion(null), 180);
+                onBlur={(e) => {
+                  completion.close();
+                  const { selectionStart: caret, selectionEnd, scrollTop: scroll } = e.currentTarget;
                   void flush().catch((e) => app.reportError(String(e)));
-                  void rpc("editor.view", {
-                    caret: source.current?.selectionStart,
-                    scroll: source.current?.scrollTop,
-                  });
+                  void rpc("editor.view", { caret, selectionEnd, scroll });
                 }}
                 onSelect={(e) => {
-                  if (completion && (e.currentTarget.selectionStart !== completion.caret || e.currentTarget.selectionEnd !== completion.caret)) setCompletion(null);
+                  completion.onSelect(e.currentTarget);
                   if (!pending.current && !sourceSelectionProgrammatic.current) {
                     const at = e.currentTarget.selectionStart;
                     const term = w.Active.find(
@@ -1646,31 +1870,22 @@ export function EditorPage() {
                     mirror.style.transform = `translateY(-${e.currentTarget.scrollTop}px)`;
                 }}
                 onKeyDown={(e) => {
-                  if (!["Control", "Meta", "Shift", "Alt"].includes(e.key))
-                    sourceSelectionProgrammatic.current = false;
-                  if (e.nativeEvent.isComposing || composition.current) return;
-                  if (
-                    completion &&
-                    ["Tab", "ArrowUp", "ArrowDown", "Escape"].includes(e.key)
-                  ) {
+                  if (sourceFollowsList.current && e.key === "i" && !e.ctrlKey && !e.metaKey &&
+                      !e.altKey && !e.shiftKey && !e.nativeEvent.isComposing && !composition.current &&
+                      addToSelectedGroup()) {
                     e.preventDefault();
                     e.stopPropagation();
-                    if (e.key === "Tab")
-                      void chooseCompletion(completion.index);
-                    if (e.key === "Escape") setCompletion(null);
-                    if (e.key === "ArrowDown")
-                      setCompletion({
-                        ...completion,
-                        index: (completion.index + 1) % completion.items.length,
-                      });
-                    if (e.key === "ArrowUp")
-                      setCompletion({
-                        ...completion,
-                        index:
-                          (completion.index - 1 + completion.items.length) %
-                          completion.items.length,
-                      });
+                    return;
                   }
+                  const movesCaret = e.ctrlKey || e.metaKey
+                    ? ["ArrowLeft", "ArrowRight", "Home", "End", "a"].includes(e.key)
+                    : !["Control", "Meta", "Shift", "Alt"].includes(e.key);
+                  if (movesCaret) {
+                    sourceSelectionProgrammatic.current = false;
+                    sourceFollowsList.current = false;
+                  }
+                  if (e.nativeEvent.isComposing || composition.current) return;
+                  completion.onKeyDown(e);
                 }}
               />
             </div>
@@ -1695,7 +1910,6 @@ export function EditorPage() {
                 }}
               />
             </div>
-            <p className="source-output-hint">自然语言描述随复制输出</p>
           </Panel>
           <div
             className="source-height-splitter"
@@ -1761,7 +1975,7 @@ export function EditorPage() {
               <IconButton
                 icon={Plus}
                 label="创建视觉组"
-                disabled={!activeSelected.length || !app.data.valid || hidden}
+                disabled={!activeSelected.length || hasNaturalSelection || !app.data.valid || hidden}
                 onClick={() => groupForm()}
               />
               <IconButton
@@ -1881,10 +2095,10 @@ export function EditorPage() {
             <IconButton
               icon={Minus}
               label="按当前步长减少选中权重"
-              disabled={!selectedTerms.length || hidden || !app.data.valid}
+              disabled={!weightIds.length || !app.data.valid}
               onClick={() =>
                 void safe("editor.weight", {
-                  ids: selected,
+                  ids: weightIds,
                   value: -app.data.settings.Step,
                   relative: true,
                 })
@@ -1894,24 +2108,23 @@ export function EditorPage() {
               className="batch-weight mono"
               aria-label="选中项明确权重"
               value={batchWeight}
-              disabled={hidden}
+              disabled={hidden || hasNaturalSelection && !weightIds.length}
               onChange={(e) => setBatchWeight(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter")
+                if (e.key === "Enter" && weightIds.length)
                   void safe("editor.weight", {
-                    ids: selected,
+                    ids: weightIds,
                     value: batchWeight,
                   });
               }}
               onBlur={() => {
                 if (
-                  selectedTerms.length &&
-                  !hidden &&
+                  weightIds.length &&
                   batchWeight.trim() &&
                   Number.isFinite(Number(batchWeight))
                 )
                   void safe("editor.weight", {
-                    ids: selected,
+                    ids: weightIds,
                     value: batchWeight,
                   });
               }}
@@ -1919,10 +2132,10 @@ export function EditorPage() {
             <IconButton
               icon={Plus}
               label="按当前步长增加选中权重"
-              disabled={!selectedTerms.length || hidden || !app.data.valid}
+              disabled={!weightIds.length || !app.data.valid}
               onClick={() =>
                 void safe("editor.weight", {
-                  ids: selected,
+                  ids: weightIds,
                   value: app.data.settings.Step,
                   relative: true,
                 })
@@ -1932,10 +2145,10 @@ export function EditorPage() {
             <IconButton
               icon={ArrowCounterClockwise}
               label={hidden ? "恢复选中隐藏项" : "取消所选项权重"}
-              disabled={!selectedTerms.length || !app.data.valid}
+              disabled={!(hidden ? selectedIds : weightIds).length || !app.data.valid}
               onClick={() =>
                 void safe(hidden ? "editor.restore" : "editor.weight", {
-                  ids: selected,
+                  ids: hidden ? selectedIds : weightIds,
                   value: null,
                 })
               }
@@ -1944,19 +2157,19 @@ export function EditorPage() {
               icon={EyeSlash}
               label="隐藏选中有效项"
               disabled={!selectedTerms.length || hidden || !app.data.valid}
-              onClick={() => void safe("editor.hide", { ids: selected })}
+              onClick={() => void safe("editor.hide", { ids: selectedIds })}
             />
             <IconButton
               icon={ArrowSquareOut}
               label="移出组成为散项"
               disabled={!selectedTerms.length || hidden || !app.data.valid}
-              onClick={() => void safe("editor.detach", { ids: selected })}
+              onClick={() => void safe("editor.detach", { ids: selectedIds })}
             />
             <IconButton
               icon={Crosshair}
               label="定位原文"
               disabled={!activeSelected.length || hidden}
-              onClick={locate}
+              onClick={() => locateTerm()}
             />
             <IconButton
               icon={Star}
@@ -1968,7 +2181,7 @@ export function EditorPage() {
               icon={Trash}
               label="删除选中项"
               disabled={!selectedTerms.length || !app.data.valid}
-              onClick={() => void safe("editor.delete", { ids: selected })}
+              onClick={() => void safe("editor.delete", { ids: selectedIds })}
             />
             <IconButton
               icon={X}
@@ -2056,35 +2269,7 @@ export function EditorPage() {
         )}
       </div>
       {menu && <Menu {...menu} onClose={() => setMenu(null)} />}{" "}
-      {completion && (
-        <div
-          ref={completionPopup}
-          className="completion"
-          style={{ left: completion.left, top: completion.top }}
-          role="listbox"
-          aria-label="光标补全候选"
-          onMouseDown={(e) => e.preventDefault()}
-        >
-          {completion.items.map((l, i) => (
-            <div
-              role="option"
-              aria-selected={i === completion.index}
-              key={`${l.Source}-${l.Key}-${i}`}
-              className={i === completion.index ? "active" : ""}
-              onMouseEnter={() => setCompletion({ ...completion, index: i })}
-              onDoubleClick={() => void chooseCompletion(i)}
-            >
-              <span className="mono">{l.Text}</span>
-              <small>{l.Translation}</small>
-              <small>
-                {l.Source}
-                {l.Count ? ` · ${l.Count.toLocaleString()}` : ""}
-              </small>
-            </div>
-          ))}
-          <p>Tab 补全 · 双击插入 · Esc 关闭</p>
-        </div>
-      )}
+      {completion.popup}
       {preview !== null && (
         <Modal
           title="复制输出预览"
@@ -2092,7 +2277,7 @@ export function EditorPage() {
           onClose={() => setPreview(null)}
           footer={
             <>
-              <span className="hint">输出全部有效项，隐藏项不参与输出</span>
+              <span className="hint">输出全部有效项，隐藏项不参与输出。自然语言提示词保留独立一行。</span>
               <span className="spacer" />
               <button onClick={() => setPreview(null)}>关闭</button>
               <button

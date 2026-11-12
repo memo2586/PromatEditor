@@ -78,8 +78,11 @@ export function usePointerSort(
           payload: { id: drag.payload.group, target: block, after },
         };
       const groupHeader = row?.classList.contains("group-row");
+      const movingNatural = drag.base.Active.some((term) =>
+        term.Kind === "natural" && drag.payload.ids?.includes(term.Id),
+      );
       const join =
-        !gap &&
+        !gap && !movingNatural &&
         (groupHeader ? !!hit.closest(".group-name,.group-count") : !!gid);
       return {
         method: "editor.move",
